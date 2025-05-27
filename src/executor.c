@@ -1,0 +1,113 @@
+#include "minishell.h"
+#include "libft.h"
+
+char 	**get_path_list()
+{
+	char *path = getenv("PATH");
+	 if (!path)
+        return NULL;
+
+	char **pathlist;
+	pathlist = ft_split(path, ':');
+	if (!pathlist)
+        return(NULL);
+   
+	return(pathlist);
+}
+
+char	*get_full_path(char *command, char **path_list)
+{
+	int i;
+	char *command_full_path;
+
+	
+	i =0;
+	while(path_list[i])
+	{
+		char *temp = ft_strjoin(path_list[i], "/");
+		command_full_path = ft_strjoin(temp, command);
+		if (access(command_full_path, X_OK) == 0)
+			return (command_full_path);
+		free(temp);
+		free(command_full_path);
+		i++;
+
+	}
+	return (NULL);
+}
+
+void	free_array(char **path_list)
+{
+	int i;
+
+	i = 0;
+	while(path_list[i])
+	{
+		free(path_list[i]);
+		i++;
+	}			
+	free(path_list);	
+}
+
+int	exists_in_path(char *command)
+{
+	char **path_list;
+
+	path_list = get_path_list();
+	if (!path_list) {
+		perror("get_path_list failed");
+		return (1);
+	}
+	char *full_path = get_full_path(command, path_list);
+	if(full_path)
+		return (1);
+	else
+	{
+
+		return(0);
+	}
+	
+}
+
+int execute(char **cmd_argv, char **envp, char *full_path, char **path_list)
+{		
+	pid_t pid;
+	
+	pid = fork();
+	if (pid == 0)// Child process
+	{	
+		execve(full_path, cmd_argv, envp);
+		perror("minishell: execve:");
+		free(full_path);
+		free_array(path_list);
+		printf("exit\n");
+		exit(126);
+	}
+	else if(pid > 0) // Parent process
+	{
+		int status;
+		waitpid(pid, &status, 0);
+       	if (WIFEXITED(status))
+			return (WEXITSTATUS(status));
+		else if (WIFSIGNALED(status))
+			return (128 + WTERMSIG(status)); // Bash does this!
+		else
+			return (1);
+	}
+	else 
+	{
+		perror("minishell: fork:");
+		free(full_path);
+		free_array(path_list);
+        return (1);
+	}
+	return(1);
+}
+/*
+Macro				Description
+
+WIFEXITED(status)	Child exited normally with exit()
+WEXITSTATUS(status)	Exit code (e.g. exit(0) → 0)
+WIFSIGNALED(status)	Child was killed by a signal
+WTERMSIG(status)	Signal that killed the child
+*/
