@@ -8,25 +8,49 @@
 #include <errno.h>
 #include <limits.h>// for LLONG_MAX
 
-typedef int(*buildin_func)(char **);
+typedef struct s_shell_state{
+    char *input;
+    char **cmd_argv;
+    char *full_path;
+    char **path_list;
+    char **mini_envp;
+} t_shell_state;
+
+typedef int(*buildin_func)(char **, char ***, t_shell_state *);
 
 typedef struct s_builtin{
     char    *name;
     buildin_func func;
+    int     only_in_parent;
 }t_builtin;
+
 
 extern int  g_exit_status;
 
-int     main(int argc, char **argv, char **envp);
-int     execute(char **cmd_argv, char **envp, char *full_path, char **path_list);
-int     execute_builtin(char **cmd_argv);
-int     is_builtin(char *command);
-int	    exists_in_path(char *command);
-char 	**get_path_list(void);
-char	*get_full_path(char *command, char **path_list);
-int     ft_cd(char **cmd_argv);
-int     ft_exit(char **cmd_argv);
-int     ft_echo(char **cmd_argv);
+int		main(int argc, char **argv, char **envp);
+int		execute(char **cmd_argv, char **envp, char *full_path, char **path_list, t_shell_state *state);
+int		execute_builtin(char **cmd_argv, t_shell_state *state);
+int		is_builtin(char *command);
+int		exists_in_path(char *command, t_shell_state *state);
+char	**get_path_list(t_shell_state *state);
+char	*get_full_path(char *command, char **path_list, t_shell_state *state);
+
+//builtins
+int		ft_cd(char **cmd_argv, char *** envp, t_shell_state *state);
+int		ft_exit(char **cmd_argv, char *** envp, t_shell_state *state);
+int		ft_echo(char **cmd_argv, char *** envp, t_shell_state *state);
+int		ft_pwd(char **cmd_argv, char *** envp, t_shell_state *state);
+int		ft_env(char **cmd_argv, char *** envp, t_shell_state *state);
+int		ft_export(char **cmd_argv, char *** envp, t_shell_state *state);
+int		ft_unset(char **cmd_argv, char *** envp, t_shell_state *state);
 void	free_array(char **path_list);
+char	*get_env_value(char **envp, char *key_equal, t_shell_state *state);
+
+// shared_fun
+void	clean_up_all(t_shell_state *state, int free_env);
+void	malloc_failure(t_shell_state *state);
+void	exit_with_status(int status, t_shell_state *state);
+int		already_exists(char **envp, char *input, int input_len);
+int		contains_equal_sign(char *input);
 
 #endif
