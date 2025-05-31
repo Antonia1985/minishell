@@ -48,9 +48,9 @@ int	ft_atoi_strict(const char *nptr, long long *num)
     return (1);
 }
 
-int ft_exit(char **cmd_argv, char *** envp, t_shell_state *state)
+int ft_exit(char **cmd_argv, t_env **env_list, t_shell_state *state)
 {    
-    (void)envp;
+    (void)env_list;
     long long num = 0;
     int status;
 

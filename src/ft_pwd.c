@@ -1,10 +1,10 @@
 #include "minishell.h"
 #include "libft.h"
 
-int ft_pwd(char **cmd_argv, char *** envp, t_shell_state *state)
+int ft_pwd(char **cmd_argv, t_env **env_list, t_shell_state *state)
 {
     (void)cmd_argv;
-    (void)envp;
+    (void)env_list;
     (void)state;
     char *cwd = getcwd(NULL, 0);
     

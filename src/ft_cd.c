@@ -1,9 +1,9 @@
 #include "minishell.h"
 #include "libft.h"
 
-int    ft_cd(char **cmd_argv, char *** envp, t_shell_state *state)
+int    ft_cd(char **cmd_argv, t_env **env_list, t_shell_state *state)
 {    
-    (void)envp;
+    (void)env_list;
     if (!cmd_argv[1])
     {
         char *home = getenv("HOME");

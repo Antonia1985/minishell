@@ -13,6 +13,8 @@ void	clean_up_all(t_shell_state *state, int free_env)
 		free_array(state->path_list);
 	if (free_env && state->mini_envp)
 		free_array(state->mini_envp);
+	if (free_env && state->env_list)
+		free_list(state->env_list);
 	free(state);
 }
 
@@ -23,7 +25,6 @@ void    malloc_failure(t_shell_state *state)
     g_exit_status = 1;
     exit(g_exit_status);
 }
-
 
 void	exit_with_status(int status, t_shell_state *state)
 {
@@ -65,4 +66,19 @@ int contains_equal_sign(char *input)
     if (ft_strchr((const char*)input, '=') != NULL)
         return (1);
     return (0);
+}
+
+void	free_list(t_env *list)
+{
+	t_env *temp = list;
+
+	while(list)
+	{
+		temp = list->next;
+		free(list->key);
+		free(list->value);
+		free(list);
+		list = temp;
+	}
+	free(list);
 }

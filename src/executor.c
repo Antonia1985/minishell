@@ -54,13 +54,14 @@ int	exists_in_path(char *command, t_shell_state *state)
 	
 }
 
-int execute(char **cmd_argv, char **envp, char *full_path, char **path_list, t_shell_state *state)
+int execute(char **cmd_argv, char *full_path, char **path_list, t_shell_state *state)
 {		
 	pid_t pid;
 	
 	pid = fork();
 	if (pid == 0)// Child process
 	{	
+		char **envp = env_list_to_envp(&state->env_list, state);
 		execve(full_path, cmd_argv, envp);
 		perror("minishell: execve:");
 		//free(full_path);

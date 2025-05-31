@@ -78,11 +78,12 @@ char *final_string(char **cmd_argv, int i, char **envp, t_shell_state *state)
     return final_str;
 }
 
-int    ft_echo(char **cmd_argv, char *** envp, t_shell_state *state)
+int    ft_echo(char **cmd_argv, t_env **env_list, t_shell_state *state)
 {    
-    (void)envp;
+    char **envp;
     int i;
 
+    *envp = env_list_to_envp(*env_list, state);
     if(!cmd_argv[1])// NULL argumnet , NOT -n
     {
         printf("\n");
@@ -105,5 +106,6 @@ int    ft_echo(char **cmd_argv, char *** envp, t_shell_state *state)
         printf("%s\n",final_str);
         free(final_str);
     }
+    free_array(envp);
     return (0);
 }
