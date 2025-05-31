@@ -1,11 +1,9 @@
 #include "minishell.h"
 #include "libft.h"
 
-int    ft_cd(char **cmd_argv)
+int    ft_cd(char **cmd_argv, char *** envp, t_shell_state *state)
 {    
-    //char *oldpwd = getcwd(NULL, 0);
-   
-    //printf("Trying to cd into: '%s'\n", cmd_argv[1]);
+    (void)envp;
     if (!cmd_argv[1])
     {
         char *home = getenv("HOME");
@@ -18,6 +16,8 @@ int    ft_cd(char **cmd_argv)
     if (chdir(cmd_argv[1]) != 0)
     {
         char *msg = ft_strjoin("minishell: cd: ", cmd_argv[1]);
+        if (!msg)
+            malloc_failure(state);
         perror(msg);
         free(msg);
         return(1);

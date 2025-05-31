@@ -23,11 +23,9 @@ int	ft_atoi_strict(const char *nptr, long long *num)
 {
 	size_t	i;
 	int		sign;
-	//long    num;
 
 	i = 0;
 	sign = 1;
-	//num = 0;
 	 while (nptr[i] == ' ' || (nptr[i] >= 9 && nptr[i] <= 13))
         i++;
 	if ((nptr[i] == '+' || nptr[i] == '-'))
@@ -50,21 +48,20 @@ int	ft_atoi_strict(const char *nptr, long long *num)
     return (1);
 }
 
-int ft_exit(char **cmd_argv)
-{
+int ft_exit(char **cmd_argv, char *** envp, t_shell_state *state)
+{    
+    (void)envp;
     long long num = 0;
     int status;
 
     if (!cmd_argv[1])
     {
-        printf("exit\n");
-        exit(g_exit_status);
+        exit_with_status(g_exit_status, state); 
     }
     if (!is_numeric(cmd_argv[1]) || ft_atoi_strict(cmd_argv[1], &num) == 0)
     {
         fprintf(stderr, "exit: %s: numeric argument required\n", cmd_argv[1]);
-        printf("exit\n");
-        exit(255);
+        exit_with_status(255, state);
     }
     if (cmd_argv[2])
     {
@@ -74,6 +71,8 @@ int ft_exit(char **cmd_argv)
     }
     status = ((int)num % 256 + 256) % 256;
     printf("exit\n");
-    exit(status);
+    g_exit_status = status;
+	return(g_exit_status);
+    //exit_with_status(status, state);
 }
 //exit stauts accepts: 0 - 255, in any case is safer to calculate: status = status % 256;
