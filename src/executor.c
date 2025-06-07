@@ -3,14 +3,17 @@
 
 char 	**get_path_list(t_shell_state *state)
 {
-	char *path = getenv("PATH");
+	char *path;
+	char **pathlist;
+
+	path = getenv("PATH");
 	 if (!path)
         return NULL;
 
-	char **pathlist;
 	pathlist = ft_split(path, ':');
 	if (!pathlist)
         return(NULL);
+
 	state->path_list = pathlist;
 	return(pathlist);
 }
@@ -19,54 +22,60 @@ char	*get_full_path(char *command, char **path_list, t_shell_state *state)
 {
 	int i;
 	char *command_full_path;
+	char *temp;
 
 	i =0;
 	while(path_list[i])
 	{
-		char *temp = ft_strjoin(path_list[i], "/");
+		temp = ft_strjoin(path_list[i], "/");
+		if (!temp)
+            malloc_failure(state);
 		command_full_path = ft_strjoin(temp, command);
-		if (access(command_full_path, X_OK) == 0)
-			return (command_full_path);
 		free(temp);
-		//free(command_full_path);
-		i++;		
-	}
-	state->full_path = command_full_path;
+		if (!command_full_path)	
+			malloc_failure(state);
+		if (access(command_full_path, X_OK) == 0)
+		{
+			state->full_path = command_full_path;
+			return (command_full_path);			
+		}	
+		free(command_full_path);
+		i++;
+	}	
 	return (NULL);
 }
 
 int	exists_in_path(char *command, t_shell_state *state)
 {
 	char **path_list;
+	char *full_path;
 
-	path_list = get_path_list(state);
-	if (!path_list) {
-		perror("get_path_list failed");
-		return (1);
-	}
-	char *full_path = get_full_path(command, path_list, state);
+	path_list = state->path_list;
+	if (!path_list)
+		malloc_failure(state);
+	full_path = get_full_path(command, path_list, state);
 	if(full_path)
-		return (1);
-	else
 	{
-		return(0);
-	}
+		free(full_path);
+		return (1);
+	}	
+	return(0);
 	
 }
 
-int execute(char **cmd_argv, char *full_path, char **path_list, t_shell_state *state)
+int execute(char **cmd_argv, char *full_path, t_shell_state *state)
 {		
 	pid_t pid;
+	char **envp;
 	
 	pid = fork();
 	if (pid == 0)// Child process
 	{	
-		char **envp = env_list_to_envp(&state->env_list, state);
+		envp = env_list_to_envp(state->env_list, state);
 		execve(full_path, cmd_argv, envp);
+		free_array(envp);
 		perror("minishell: execve:");
-		//free(full_path);
-		//free_array(path_list);
-		clean_up_all(state, 1);
+		clean_up_all(state, 1);		
 		printf("exit\n");
 		g_exit_status = 126;
 		exit(126);
@@ -84,9 +93,7 @@ int execute(char **cmd_argv, char *full_path, char **path_list, t_shell_state *s
 	}
 	else 
 	{
-		perror("minishell: fork:");
-		free(full_path);
-		free_array(path_list);
+		perror("minishell: fork:");		
         return (1);
 	}
 	return(1);

@@ -1,7 +1,7 @@
 #include "minishell.h"
 #include "libft.h"
 
-t_env *env_list_from_envp(char **envp, t_shell_state *state)
+t_env *env_list_from_envp(char **envp, t_shell_state *state, int for_envp)
 {
     int     i;
     char    *sep;
@@ -16,18 +16,69 @@ t_env *env_list_from_envp(char **envp, t_shell_state *state)
     i = 0;
     while(envp[i])
     {
-        sep = ft_strchr(envp[i], '=');
-        if(!sep)
+
+        if(for_envp)
         {
-            i++;
-            continue;
+            sep = ft_strchr(envp[i], '=');
+            if(!sep)
+            {
+                i++;
+                continue;
+            }       
+            key_len = sep - envp[i];
         }
-        key_len = sep - envp[i];
+        else
+        {
+            sep = ft_strchr(envp[i], '=');
+            key_len = sep + 1 - envp[i];
+        }
+        
         key = ft_substr(envp[i], 0, key_len);
-        value = ft_strdup(sep + 1);
+        if(!key)
+        {
+            if(!state)//nothing to free outside the loop
+            {
+                perror("minishell: malloc");
+                g_exit_status = 1;
+                exit(g_exit_status);
+            }
+            else
+                malloc_failure(state);            
+        }
+
+        if(sep)
+        {
+            value = ft_strdup(sep + 1);
+            if(!value)
+            {
+                free(key);
+                if(!state)//nothing to free outside the loop
+                {
+                    perror("minishell: malloc"); 
+                    g_exit_status = 1;
+                    exit(g_exit_status);
+                }
+                else
+                    malloc_failure(state);            
+            }
+        }           
+        else
+            value = NULL;
+
         t_env *node = malloc(sizeof(t_env));
         if(!node)
-            malloc_failure(state);
+        {
+            free(key);
+            free(value);
+            if(!state)//nothing to free outside the loop
+            {
+                perror("minishell: malloc"); 
+                g_exit_status = 1;
+                exit(g_exit_status);
+            }
+            else
+                malloc_failure(state);          
+        }
         node->key = key;
         node->value = value;
         node->next = NULL;
@@ -64,7 +115,7 @@ char **env_list_to_envp(t_env *list, t_shell_state *state)
     {
         key_equal = ft_strjoin(list->key, "=");
         if(!key_equal)
-            malloc_failure(state);;
+            malloc_failure(state);
         envp_array[i] = ft_strjoin(key_equal, list->value);
         free(key_equal);
         if (!envp_array[i])

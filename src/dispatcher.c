@@ -4,8 +4,8 @@
 static t_builtin g_builtins[] = {
     {"cd", ft_cd, 1},
     {"exit", ft_exit, 1},
-    //{"export", ft_export, 1},
-    //{"unset", ft_unset, 1},
+    {"export", ft_export, 1},
+    {"unset", ft_unset, 1},
     {"echo", ft_echo, 0},
     {"pwd", ft_pwd, 0},   
     {"env", ft_env, 0},

@@ -36,10 +36,10 @@ char	*ft_strrchr(const char *s, int c)
 	}
 	return (NULL);
 }
-/*	The strchr() and strrchr() functions return a pointer  to  the  matched
+/*	The strchr() and strrchr()(<-last occurance) functions return a pointer  to  the  matched
 	character  or NULL if the character is not found.  The terminating null
 	byte is considered part of the string, so that if  c  is  specified  as
-	'\0', these functions return a pointer to the terminator.
+	'\0', c = '\0', these functions return a pointer to the terminator.
 */
 /*
 #include <stdio.h>

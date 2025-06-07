@@ -1,13 +1,12 @@
 NAME = minishell
 CC = cc
-CFLAGS = -Wall -Wextra -Werror -g -I./include -I./libft/include -Ignl
+CFLAGS = -Wall -Wextra -Werror -g -I./include -I./libft/include -Ignl -fsanitize=address -g
 LDFLAGS = -lreadline -lhistory
 LIBFT = ./libft/libft.a
 SRC = src/main.c src/executor.c src/dispatcher.c \
-	src/ft_cd.c src/ft_exit.c src/ft_export.c src/ft_unset.c \
-	src/ft_pwd.c src/ft_env.c src/ft_echo.c \
-	src/shared_fun.c \
-	gnl/get_next_line.c gnl/get_next_line_utils.c
+	src/ft_cd.c src/ft_exit.c src/ft_pwd.c\
+	src/ft_export.c src/ft_unset.c src/ft_env.c src/ft_echo.c \
+	src/shared_fun.c src/converter.c src/signals_handler.c
 
 OBJ = $(SRC:.c=.o)
 

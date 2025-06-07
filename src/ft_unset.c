@@ -1,99 +1,51 @@
 #include "minishell.h"
 #include "libft.h"
 
-void    delete_var(char***envp, char *key_equal, int key_equ_len, t_shell_state *state)
+void    search_for_key_and_remove(char *key, t_env **env_list)
 {
-    int i;
-    int j;
-    int env_len;
+    t_env *current = *env_list;
+    t_env *prev = NULL;
 
-    env_len = 0;
-    i = 0;
-    j = 0;
-
-    //find the length of envp, how many key-values contains i.e. env_len = 10 lines
-    while((*envp)[env_len])
-        env_len++;
-
-    //create new envp smaller by 1 pair key-value
-    char **new_envp = malloc(sizeof(char*)*(env_len)); //env_len = 10 lines -1(for the deleted) + 1 (for NULL) = 10
-    if(!new_envp)
-        malloc_failure(state);
-
-    //assigne to the new_envp all the pointers of the lines key-value.
-    while((*envp)[j])
+    if(current && ft_strcmp(key, current->key) == 0)
     {
-        if (ft_strncmp((*envp)[j], key_equal, key_equ_len) != 0)// find the envp
-        {
-            new_envp[i] = ft_strdup((*envp)[j]);
-            if (!new_envp[i])
-                malloc_failure(state);
-            i++;
-        }
-        j++;
+        *env_list = current->next;
+        free(current);
+        return;            
     }
-    new_envp[i] = NULL;
-    free_array(*envp);
-    *envp = new_envp;
+    while(current && ft_strcmp(key, current->key) != 0)
+    {
+        prev = current;
+        current = current->next;
+    }
+    if(current && ft_strcmp(key, current->key) == 0)
+    {
+        prev->next = current->next;
+        free(current);
+    }
 }
 
-int ft_unset(char **cmd_argv, char ***envp, t_shell_state *state)
+int ft_unset(char **cmd_argv, t_env **env_list, t_shell_state *state)
 {
-    char **input;
-    char *key_equal;
+    (void)state;
     int i;
-    int j;
-    int key_equ_len;
-    int count;
-
-    if (cmd_argv[1])
+   
+    i = 0;
+    while (cmd_argv[i])
+        i++;
+    if(i <= 1)
     {
-        count =0;
-        i = 1;
-        while(cmd_argv[i])
+        g_exit_status = 0;
+        return (g_exit_status);
+    }
+
+    i = 1;
+    while(cmd_argv[i])
+    {
+        if (ft_strchr(cmd_argv[i], '=') == NULL)
         {
-            if(!contains_equal_sign(cmd_argv[i]))
-                count++;
-            i++;
+            search_for_key_and_remove(cmd_argv[i], env_list);
         }
-
-        input = malloc(sizeof(char *) * (count + 1));
-        if (!input)
-            malloc_failure(state);
-
-        i = 1;
-        j = 0;
-        while(cmd_argv[i])
-        {
-            if(!contains_equal_sign(cmd_argv[i]))
-            {
-                input[j] = ft_strdup(cmd_argv[i]);
-                if(!input[j])
-                    malloc_failure(state);
-                j++;
-            }
-            i++;          
-        }       
-        input[j] = NULL;
-        i = 0;
-        while(input[i])
-        {
-            key_equal = ft_strjoin(input[i], "=");
-            if(!key_equal)
-            {
-                free_array(input);
-                //free(input);
-                malloc_failure(state);
-            }
-
-            key_equ_len = ft_strlen(key_equal);
-            if (already_exists((*envp), key_equal, key_equ_len))
-                delete_var(envp, key_equal, key_equ_len, state);
-            free(key_equal);
-            i++;
-        }
-        free_array(input);
-        //free(input);
+        i++;        
     }
     return(0);
 }

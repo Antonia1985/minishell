@@ -11,8 +11,8 @@ void	clean_up_all(t_shell_state *state, int free_env)
 		free(state->full_path);
 	if (state->path_list)
 		free_array(state->path_list);
-	if (free_env && state->mini_envp)
-		free_array(state->mini_envp);
+	//if (free_env && state->mini_envp)
+		//free_array(state->mini_envp);
 	if (free_env && state->env_list)
 		free_list(state->env_list);
 	free(state);
@@ -23,6 +23,7 @@ void    malloc_failure(t_shell_state *state)
     perror("minishell: malloc");
     clean_up_all(state, 1);
     g_exit_status = 1;
+	rl_clear_history();
     exit(g_exit_status);
 }
 
