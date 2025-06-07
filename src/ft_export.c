@@ -358,4 +358,19 @@ Cannot be a digit.
 
 Subsequent characters:
 May be letters (A–Z, a–z), digits (0–9), or underscore (_).
+
+
+
+NO need to support:
+VAR=value             ❌ (no export)
+
+minishell ONLY needs to handle:
+export VAR=value      ✅ store/update VAR
+export VAR            ✅ add VAR if it doesn't exist (with empty value):
+
+
+| Case                        | Why `export MYVAR` matters?                   |
+| --------------------------- | --------------------------------------------- |
+| Already in `envp`           | No effect, but allowed (harmless)             |
+| Not defined at all          | Creates it with empty value                   |
 */
