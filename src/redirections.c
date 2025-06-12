@@ -1,6 +1,19 @@
 #include "minishell.h"
 #include "libft.h"
 
+int redirection_type(t_command *cmd)
+{
+	if (cmd->infile) // <
+		return(1);
+	if (cmd->outfile && !cmd->append) // >
+		return (2);
+	if(cmd->outfile && cmd->append) // >>
+		return (3);
+	//if(cmd->heredoc)
+		//return (4);
+	return (0);
+}
+
 void    redirect_fd(char *file, int redirection_type)
 {
     int fd;

@@ -102,7 +102,7 @@ int main(int argc, char **argv, char **envp)
 		
 		if (is_builtin(command) && !needs_fork(cmd))
 		{
-			g_exit_status = execute_builtin(cmd->argv, state);			
+			g_exit_status = execute_builtin(cmd, state);			
 		}		
 		//else if (exists_in_path(command, state))
 		else if (state->full_path)

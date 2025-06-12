@@ -37,15 +37,24 @@ int	should_run_in_parent(char *command)
 }
 
 
-int execute_builtin(char **cmd_argv, t_shell_state *state)
+int execute_builtin(t_command *cmd, t_shell_state *state)
 {
     int status;
     int i = 0;
+    int redir_type;
+
+	redir_type = redirection_type(cmd);
     while (g_builtins[i].name != NULL)
     {
-        if (ft_strcmp(cmd_argv[0], g_builtins[i].name) == 0)
+        if (ft_strcmp(cmd->argv[0], g_builtins[i].name) == 0)
         {           
-            status = g_builtins[i].func(cmd_argv, &state->env_list, state);
+            if(redir_type == 1)
+			redirect_fd(cmd->infile, 1);
+            if(redir_type == 2)
+                redirect_fd(cmd->outfile, 2);
+            if(redir_type == 3)
+                redirect_fd(cmd->outfile, 3);
+            status = g_builtins[i].func(cmd->argv, &state->env_list, state);
             g_exit_status = status;
             return status;
         }

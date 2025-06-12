@@ -59,7 +59,7 @@ extern int  g_exit_status;
 
 int		main(int argc, char **argv, char **envp);
 int		execute(t_command *cmd, char *full_path, t_shell_state *state);
-int		execute_builtin(char **cmd_argv, t_shell_state *state);
+int		execute_builtin(t_command *cmd, t_shell_state *state);
 int		is_builtin(char *command);
 int     should_run_in_parent(char *command);
 //int		exists_in_path(char *command, t_shell_state *state);
@@ -96,6 +96,7 @@ void    signals_handler(void);
 //redirections
 void     redirect_fd(char *file, int redirection_type);
 void    here_doc(char *delimeter, t_env *env_list, t_shell_state *state);
+int     redirection_type(t_command *cmd);
 
 //sort_envp
 void    find_node_by_value(char *x, t_env **currentx, t_env **prevx, t_env **head);
@@ -109,12 +110,14 @@ char    *get_env_list_value(t_env *env_list, char *key);
 char	*expand_line(char *line, t_env *env_list, t_shell_state *state);
 
 
-//parser to be changed
+// ------parser to be change-----
 // Main parser function
 // input: the raw user input line
 // output: a linked list of t_command structs (one per command segment)
 t_command *parse_input(const char *input);
-
 // Optional: function to free the command list
 void free_command_list(t_command *cmd);
+
+
+
 #endif

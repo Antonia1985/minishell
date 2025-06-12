@@ -45,19 +45,6 @@ char	*get_full_path(char *command, char **path_list, t_shell_state *state)
 	return (NULL);
 }
 
-int redirection_type(t_command *cmd)
-{
-	if (cmd->infile) // <
-		return(1);
-	if (cmd->outfile && !cmd->append) // >
-		return (2);
-	if(cmd->outfile && cmd->append) // >>
-		return (3);
-	//if(cmd->heredoc)
-		//return (4);
-	return (0);
-}
-
 int execute(t_command *cmd, char *full_path, t_shell_state *state)
 {		
 	pid_t pid;
@@ -68,8 +55,6 @@ int execute(t_command *cmd, char *full_path, t_shell_state *state)
 	pid = fork();
 	if (pid == 0)// Child process
 	{	
-		envp = env_list_to_envp(state->env_list, state);
-		
 		if(redir_type == 1)
 			redirect_fd(cmd->infile, 1);
 		if(redir_type == 2)
@@ -77,6 +62,7 @@ int execute(t_command *cmd, char *full_path, t_shell_state *state)
 		if(redir_type == 3)
 			redirect_fd(cmd->outfile, 3);
 
+		envp = env_list_to_envp(state->env_list, state);
 		execve(full_path, cmd->argv, envp);
 		free_array(envp);
 		perror("minishell: execve:");
