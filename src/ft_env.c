@@ -17,5 +17,6 @@ int ft_env(char **cmd_argv, t_env **env_list, t_shell_state *state)
         printf("%s\n", (envp)[i]);
         i++;
     }
+    free_array(envp);
     return(0);
 }

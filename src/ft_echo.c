@@ -46,21 +46,31 @@ char    *replace_with_value_if_needed(char ** envp, char *final_str, t_shell_sta
 {
     if (final_str[0] && final_str[0] == '$')
     {
-        const char *key = final_str + 1;
-        char *key_equal = ft_strjoin(key, "=");
-        if(!key_equal)
+        if(final_str[1] == '?')
         {
-            free_array(envp);
-            malloc_failure(state);
-        }
-        if(already_exists(envp, key_equal, ft_strlen(key_equal)))
-        {           
-            char *value = get_env_value(envp, key_equal, state);
-            free(key_equal);
+            char *value = ft_itoa(g_exit_status);
+            if(!value)          
+                malloc_failure(state);
             return value;
         }
-        free(key_equal);
-        return ft_strdup("");
+        else
+        {
+            const char *key = final_str + 1;
+            char *key_equal = ft_strjoin(key, "=");
+            if(!key_equal)
+            {
+                free_array(envp);
+                malloc_failure(state);
+            }
+            if(already_exists(envp, key_equal, ft_strlen(key_equal)))
+            {           
+                char *value = get_env_value(envp, key_equal, state);
+                free(key_equal);
+                return value;
+            }
+            free(key_equal);
+            return ft_strdup("");
+        }
     }
     return (ft_strdup(final_str));
 }

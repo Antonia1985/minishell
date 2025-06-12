@@ -1,0 +1,9 @@
+total 140
+-rw-r--r-- 1 antonia antonia    799 Jun 12 14:13 Makefile
+drwxr-xr-x 2 antonia antonia   4096 Jun  7 13:54 include
+-rw-r--r-- 1 antonia antonia      0 Jun 12 15:07 input.txt
+drwxr-xr-x 4 antonia antonia   4096 Jun 12 14:31 libft
+-rwxr-xr-x 1 antonia antonia 126152 Jun 12 15:04 minishell
+drwxr-xr-x 2 antonia antonia   4096 Jun 12 15:04 src
+"lalala"
+MSI

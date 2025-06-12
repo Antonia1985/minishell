@@ -4,7 +4,7 @@
 void    my_handler(int signal)
 {
     (void)signal;
-    rl_replace_line("hey", 0); //Replaces Readline’s editing buffer (the text the user has been typing) with the given text
+    rl_replace_line("", 0); //Replaces Readline’s editing buffer (the text the user has been typing) with the given text
     rl_on_new_line();       //Internally it resets Readline’s idea of the current cursor position to the start of a line.
     write(1, "\n", 1);      //Forces Readline to redraw the prompt and the contents of its editing buffer on the current line
     rl_redisplay();

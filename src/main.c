@@ -26,10 +26,10 @@ char *get_current_directory()
 	return (prompt);
 }
 
-int	get_input(char ***cmd_argv, char **input, t_shell_state *state)
+int	get_input(char **input, t_env *env_list, t_shell_state *state)
 {
 	char *prompt = get_current_directory();
-
+	
 	*input = readline(prompt);
 	free(prompt);
 	if (!*input) //readline() returned NULL on EOF (Ctrl+D)
@@ -38,24 +38,24 @@ int	get_input(char ***cmd_argv, char **input, t_shell_state *state)
 		return(0);
 	}
 	if (**input) // Non-empty input
-            add_history(*input);
-	size_t len = ft_strlen(*input);
-	if (len > 0 && (*input)[len - 1] == '\n')
-		(*input)[len - 1] = '\0';
+        add_history(*input);	
 	if ((*input)[0] == '\0')
 	{
 		free(*input);
 		return(1);
 	}
-	*cmd_argv = ft_split(*input, ' ');
-	if(!*cmd_argv || !(*cmd_argv)[0])
-	{
-		free(*input);
-		return(1);
-	}
+
+	*input = expand_line(*input, env_list, state);
+	if(!*input)
+		malloc_failure(state);
+
 	state->input = *input;
-	state->cmd_argv = *cmd_argv;
 	return(2);
+}
+
+
+int needs_fork(t_command *cmd) {
+   return (cmd->has_pipe || cmd->heredoc || !should_run_in_parent(cmd->argv[0]));
 }
 
 int main(int argc, char **argv, char **envp)
@@ -68,7 +68,7 @@ int main(int argc, char **argv, char **envp)
 	while (1)
 	{			
 		char	*command;
-		char	**cmd_argv;	
+		//char	**cmd_argv;	
 		char	*input;
 		t_shell_state *state;
 
@@ -80,8 +80,9 @@ int main(int argc, char **argv, char **envp)
 		}
 		ft_memset(state, 0, sizeof(t_shell_state));
 		state->env_list = env_list;
-
-		int input_res = get_input(&cmd_argv, &input, state);
+				
+		
+		int input_res = get_input(&input, env_list, state);
 		if(input_res == 0) //readline() returned NULL on EOF (Ctrl+D)
 		{
 			rl_clear_history();
@@ -92,30 +93,29 @@ int main(int argc, char **argv, char **envp)
 		{
 			clean_up_all(state, 0);
 			continue;
-		}	
-		
-		command = cmd_argv[0];
+		}
+		t_command *cmd = parse_input(input);
+		command = cmd->argv[0];
+		state->cmd = cmd;		
 		state->path_list = get_path_list(state);
 		state->full_path = get_full_path(command, state->path_list, state);
-
-		if (ft_strcmp(command, "$?") == 0)
-			command  = ft_itoa(g_exit_status);
-		if (is_builtin(command))
+		
+		if (is_builtin(command) && !needs_fork(cmd))
 		{
-			g_exit_status = execute_builtin(cmd_argv, state);			
-		}			
-		else if (exists_in_path(command, state))
+			g_exit_status = execute_builtin(cmd->argv, state);			
+		}		
+		//else if (exists_in_path(command, state))
+		else if (state->full_path)
 		{
-			g_exit_status = execute(cmd_argv, state->full_path, state);			
+			g_exit_status = execute(cmd, state->full_path, state);
 		}
 		else
 		{
-			fprintf(stderr, "minishell: %s: command not found\n", command);
+			fprintf(stderr, "%s: command not found\n", command); //"minishell: %s: command not found\n"
     		g_exit_status = 127;
-			// if (full_path)
-            //    free(full_path);
 		}
 		clean_up_all(state, 0);
+
 	}	
 	free_list(env_list);
 	rl_clear_history();

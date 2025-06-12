@@ -24,6 +24,19 @@ int is_builtin(char *command)
     return (0);
 }
 
+int	should_run_in_parent(char *command)
+{
+	int i = 0;
+    while (g_builtins[i].name != NULL)
+    {
+        if (ft_strcmp(command, g_builtins[i].name) == 0 && g_builtins[i].only_in_parent == 1)
+            return (1);
+        i++;
+    }
+    return (0);
+}
+
+
 int execute_builtin(char **cmd_argv, t_shell_state *state)
 {
     int status;
@@ -40,3 +53,13 @@ int execute_builtin(char **cmd_argv, t_shell_state *state)
     }   
     return(0);
 }
+
+
+/*
+Built-ins like echo, pwd, env:
+Can run without forking, for performance.
+
+Must fork if they're:
+-In a pipeline
+-Involved with redirection (e.g. >, <, >>)
+*/

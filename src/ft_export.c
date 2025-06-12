@@ -1,131 +1,6 @@
 #include "minishell.h"
 #include "libft.h"
 
-void    find_node_by_value(char *x, t_env **currentx, t_env **prevx, t_env **head)
-{
-    *currentx = *head;
-    *prevx = NULL;
-    while(*currentx && (ft_strcmp((*currentx)->key, x) != 0))
-    {
-        *prevx = *currentx;
-        *currentx = (*currentx)->next;
-    }
-}
-
-void    update_prev_of_swaped(t_env **current, t_env **prev, t_env **head)
-{
-    if(*prev)
-        (*prev)->next = *current;
-    else
-        *head = *current; 
-    
-}
-
-void    update_next_of_swaped( t_env **currentx,  t_env **currenty)
-{
-    t_env *temp = NULL;
-    if ((*currentx)->next == (*currenty))
-    {
-        (*currentx)->next = (*currenty)->next;
-        (*currenty)->next = (*currentx);
-    }
-    else if((*currenty)->next == (*currentx))
-    {
-        (*currenty)->next = (*currentx)->next;
-        (*currentx)->next = (*currenty);
-    }
-    else
-    {
-        temp = (*currentx)->next;
-        (*currentx)->next = (*currenty)->next;
-        (*currenty)->next = temp;
-    }
-}
-
-void    swap_nodes_strings(t_env **head, char *x, char *y)
-{
-    if(ft_strcmp(x, y) == 0)
-        return;
-    t_env *prevx= NULL;
-    t_env *prevy= NULL;
-    t_env *currentx= NULL;
-    t_env *currenty= NULL;   
-
-    find_node_by_value(x, &currentx, &prevx, head);
-    find_node_by_value(y, &currenty, &prevy, head);
-    /*currentx = *head;
-    while(currentx && (ft_strcmp(currentx->key, x) != 0))
-    {
-        prevx = currentx;
-        currentx = currentx->next;
-    }
-    currenty = *head;
-    while(currenty && (ft_strcmp(currenty->key, y) != 0))
-    {
-        prevy = currenty;
-        currenty = currenty->next;
-    }*/
-    if(!currentx || !currenty)
-        return;    
-    
-    update_prev_of_swaped(&currenty, &prevx, head);
-    update_prev_of_swaped(&currentx, &prevy, head);
-    /*if(prevx)
-        prevx->next = currenty;
-    else
-        *head = currenty;    
-    if(prevy)
-        prevy->next = currentx;
-    else 
-        *head = currentx;
-    */
-    update_next_of_swaped(&currentx, &currenty);
-    /*if (currentx->next == currenty)
-    {
-        currentx->next = currenty->next;
-        currenty->next = currentx;
-    }
-    else if(currenty->next == currentx)
-    {
-        currenty->next = currentx->next;
-        currentx->next = currenty;
-    }
-    else
-    {
-        temp = currentx->next;
-        currentx->next = currenty->next;
-        currenty->next = temp;
-    }*/
-}
-
-void    sort_list(t_env **env_head)
-{
-    t_env *min = *env_head;
-    t_env *current = NULL;
-    int swapped;
-
-    if (!env_head || !(*env_head))
-        return;
-
-    swapped = 1;
-    while(swapped)
-    {
-        swapped = 0;
-        min = *env_head;        
-        while(min && min->next)
-        {
-            current = min->next;
-            if(ft_strcmp(min->key, current->key) > 0)
-            {
-                swap_nodes_strings(env_head, min->key, current->key);
-                swapped = 1;   
-                break;          
-            }         
-            min = min->next;
-        }                     
-    }
-}
-
 void    print_exported_list(t_env *head)
 {
     t_env *current = head;
@@ -180,7 +55,7 @@ t_env   *copy_env_list(t_env *original, t_shell_state *state)
     return (copy_head);
 }
 
-int already_exists_in_list(t_env *env_list, char *key, int keylen)
+int     already_exists_in_list(t_env *env_list, char *key, int keylen)
 {    
     while(env_list)
     {
@@ -191,7 +66,7 @@ int already_exists_in_list(t_env *env_list, char *key, int keylen)
     return(0);
 }
 
-void add_envp_in_list(t_env **env_list, char *key, char *value,  t_shell_state *state, t_env *variables)
+void    add_envp_in_list(t_env **env_list, char *key, char *value,  t_shell_state *state, t_env *variables)
 {
     t_env *current = *env_list;
     t_env *prev = NULL;
@@ -215,24 +90,8 @@ void add_envp_in_list(t_env **env_list, char *key, char *value,  t_shell_state *
     {
         prev = current;
         current = current->next;
-    } 
-        
-   
+    }  
     prev->next = new_node;
-}
-
-char    *get_env_list_value(t_env *env_list, char *key)
-{
-    while(env_list)
-    {
-        if(ft_strcmp(env_list->key, key)== 0)
-        {
-            return(env_list->value);
-        }
-        env_list = env_list->next;
-            
-    }
-    return (NULL);
 }
 
 void    update_envp_value(t_env **env_list, char *key, char *value, t_shell_state *state, t_env *variables)
@@ -240,10 +99,14 @@ void    update_envp_value(t_env **env_list, char *key, char *value, t_shell_stat
     t_env   *current = *env_list;
     while(current)
     {
+        printf("current->key = %s, key = %s\n",current->key, key);
         if(ft_strcmp(current->key, key)== 0)
         {
+            
+            printf("current->value = %s, value = %s\n",current->value, value);
             free(current->value);
-            current->value = value;
+            current->value = value;         
+            printf("after change: current->value = %s, value = %s\n",current->value, value);   
             if(!current)
             {
                 free_list(variables);
@@ -258,8 +121,7 @@ int     contains_invalid_char(t_env *variables)
 {   
     int i;
 
-    i = 0;
-    
+    i = 0;    
     if(variables->key[0] != '_' && !ft_isalpha(variables->key[0]))
         return(1);
     while (variables->key[i])
@@ -277,10 +139,10 @@ int    ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state)
     t_env   *copy;
     t_env   *variables;
     int     i;
-    char    *key_equal;
-    int     key_equ_len;
+    //char    *key_equal;
+    //int     key_equ_len;
     char    *value_env;
-    char    *key_net;
+    char    *key_net;//add it only inside the if() that you need it
         
     g_exit_status = 0;
     i = 0;
@@ -297,40 +159,68 @@ int    ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state)
     else
     {
         variables = env_list_from_envp(cmd_argv+1, state, 0);
-        key_equal = ft_strjoin(variables->key, "=");
-        key_equ_len = ft_strlen(key_equal);
-       
+        //key_equal = ft_strjoin(variables->key, "=");
+        
+        //key_equ_len = ft_strlen(key_equal);       
         //print_list(variables);
         //free_list(variables);
         while (variables)
         {
             if (!contains_invalid_char(variables))
             {
+                
                 if(!contains_equal_sign(variables->key))//if input contains just "key" no '='
                 {
-                    if(!key_equal)
-                        malloc_failure(state);  
-                    if(!already_exists_in_list(*env_list, key_equal, key_equ_len))//if key doesn't exists at all
+                    key_net = ft_strtrim(variables->key, "=");
+                    printf("inside if(!contains_equal_sign(key_net)//if input contains just key no '='\n");
+                    printf("variables->key:%s --- key_net:%s --- key_equal:\n",variables->key, key_net);                     
+                    if(!already_exists_in_list(*env_list, key_net, ft_strlen(key_net)))//if key doesn't exists at all
                     {
+                        printf("inside if(!already_exists_in_list(*env_list, key_net, ft_strlen(key_net)))//if key doesn't exists at all\n");
+                        printf("variables->key:%s --- key_net:%s --- key_equal:\n",variables->key, key_net );
+                        free(key_net);
                         variables->value = ft_strdup("");
                         if (!variables->value )
                             malloc_failure(state);
                         add_envp_in_list(env_list, variables->key,  variables->value, state, variables); //just add "key="
-                    }//if "key" doesn't exist and dosen't have an '=' sign attached, nothing happens, no new input!
+                    }
+                    else//if "key" doesn't exist and dosen't have an '=' sign attached, nothing happens, no new input!
+                    {
+                        free(key_net);
+                        variables = variables->next;
+                        continue;
+                    } 
                 }
-                else // if input has "key=..."
+                else // if input has '='  ie: "key=..."
                 {
                     key_net = ft_strtrim(variables->key, "=");
-                    if(!already_exists_in_list(*env_list, variables->key, ft_strlen(variables->key))) //if key doesn't exist in envp
-                    {
+                    printf("else // if input has '='  ie: key=...\n");
+                    printf("variables->key:%s --- key_net:%s --- key_equal:\n",variables->key, key_net);
+                    //key_net = ft_strtrim(variables->key, "=");
+                    if(!already_exists_in_list(*env_list, key_net, ft_strlen(key_net))) //if key doesn't exist in envp
+                    {     
+                        printf("inside if(!already_exists_in_list(*env_list, key_net, ft_strlen(key_net))) //if key doesn't exist in envp)\n");
+                        printf("variables->key:%s --- key_net:%s --- key_equal:\n",variables->key, key_net);                   
                         add_envp_in_list(env_list, key_net, variables->value, state, variables); //just add "key=..." , all the input
                     }
                     else //if "key=..." exists
                     {
+                        printf("else //if key=... exists\n");
+                        printf("variables->key:%s --- key_net:%s --- key_equal:\n",variables->key, key_net);                   
                         value_env = get_env_list_value(*env_list, key_net);
                         if(ft_strcmp(value_env, variables->value) != 0) //if the values are different update the env
-                            update_envp_value(env_list, variables->key, variables->value, state, variables);
-                        
+                        {
+                            printf("if(ft_strcmp(value_env, variables->value) != 0) //if the values are different update the env\n");
+                            printf("variables->key:%s --- key_net:%s --- key_equal:\n",variables->key, key_net);
+                            update_envp_value(env_list, key_net, variables->value, state, variables);
+                        }
+                        else  //if "key=..." exists and variables are the same, nothing happens, continue;
+                        {
+                            free(key_net);
+                            variables = variables->next;
+                            continue;
+                        }
+                                                
                     }
                 }
             }
@@ -344,6 +234,8 @@ int    ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state)
             }                  
             variables = variables->next;
         }
+        
+       
         free_list(variables);        
     }
 

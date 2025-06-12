@@ -102,6 +102,7 @@ char **env_list_to_envp(t_env *list, t_shell_state *state)
 
     temp = list;
     list_len = 0;
+    key_equal = NULL;
     while(temp)
     {
         list_len++;
@@ -113,6 +114,7 @@ char **env_list_to_envp(t_env *list, t_shell_state *state)
     i = 0;
     while(list)
     {
+        key_equal = NULL;
         key_equal = ft_strjoin(list->key, "=");
         if(!key_equal)
             malloc_failure(state);
@@ -124,6 +126,7 @@ char **env_list_to_envp(t_env *list, t_shell_state *state)
         i++;
     }
     envp_array[i] = NULL;
+    state->mini_envp = envp_array;
     return (envp_array);
 }
 

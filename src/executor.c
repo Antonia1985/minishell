@@ -45,37 +45,42 @@ char	*get_full_path(char *command, char **path_list, t_shell_state *state)
 	return (NULL);
 }
 
-int	exists_in_path(char *command, t_shell_state *state)
+int redirection_type(t_command *cmd)
 {
-	char **path_list;
-	char *full_path;
-
-	path_list = state->path_list;
-	if (!path_list)
-		malloc_failure(state);
-	full_path = get_full_path(command, path_list, state);
-	if(full_path)
-	{
-		free(full_path);
-		return (1);
-	}	
-	return(0);
-	
+	if (cmd->infile) // <
+		return(1);
+	if (cmd->outfile && !cmd->append) // >
+		return (2);
+	if(cmd->outfile && cmd->append) // >>
+		return (3);
+	//if(cmd->heredoc)
+		//return (4);
+	return (0);
 }
 
-int execute(char **cmd_argv, char *full_path, t_shell_state *state)
+int execute(t_command *cmd, char *full_path, t_shell_state *state)
 {		
 	pid_t pid;
 	char **envp;
-	
+	int redir_type;
+
+	redir_type = redirection_type(cmd);
 	pid = fork();
 	if (pid == 0)// Child process
 	{	
 		envp = env_list_to_envp(state->env_list, state);
-		execve(full_path, cmd_argv, envp);
+		
+		if(redir_type == 1)
+			redirect_fd(cmd->infile, 1);
+		if(redir_type == 2)
+			redirect_fd(cmd->outfile, 2);
+		if(redir_type == 3)
+			redirect_fd(cmd->outfile, 3);
+
+		execve(full_path, cmd->argv, envp);
 		free_array(envp);
 		perror("minishell: execve:");
-		clean_up_all(state, 1);		
+		clean_up_all(state, 1);
 		printf("exit\n");
 		g_exit_status = 126;
 		exit(126);
