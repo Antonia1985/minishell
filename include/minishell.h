@@ -16,8 +16,6 @@
 #include <asm-generic/signal-defs.h>
 #include <fcntl.h>
 
-
-
 typedef struct s_command {
     char **argv;               // Arguments array (execve-compatible)
     char *infile;              // File name for input redirection ('<')
@@ -25,6 +23,7 @@ typedef struct s_command {
     int append;                // 0 = >, 1 = >>
     int heredoc;               // 1 = heredoc used (<<)
     char *heredoc_delim;       // Delimiter string for heredoc
+    int has_redirection;        // 1 = true, 0 = false
     int has_pipe;              // 1 if there's a pipe after this command
     struct s_command *next;    // Next command in pipeline
 } t_command;
@@ -58,7 +57,7 @@ typedef struct s_builtin{
 extern int  g_exit_status;
 
 int		main(int argc, char **argv, char **envp);
-int		execute(t_command *cmd, char *full_path, t_shell_state *state);
+int		execute_fork(t_command *cmd, char *full_path, t_shell_state *state);
 int		execute_builtin(t_command *cmd, t_shell_state *state);
 int		is_builtin(char *command);
 int     should_run_in_parent(char *command);
@@ -97,6 +96,7 @@ void    signals_handler(void);
 void     redirect_fd(char *file, int redirection_type);
 void    here_doc(char *delimeter, t_env *env_list, t_shell_state *state);
 int     redirection_type(t_command *cmd);
+void    apply_redirections(t_command *cmd);
 
 //sort_envp
 void    find_node_by_value(char *x, t_env **currentx, t_env **prevx, t_env **head);

@@ -3,7 +3,7 @@ CC = cc
 CFLAGS = -Wall -Wextra -Werror -g -I./include -I./libft/include -Ignl -fsanitize=address -g
 LDFLAGS = -lreadline -lhistory
 LIBFT = ./libft/libft.a
-SRC = src/main.c src/executor.c src/dispatcher.c \
+SRC = src/main.c src/fork_executor.c src/builtin_executor.c \
 	src/ft_cd.c src/ft_exit.c src/ft_pwd.c\
 	src/ft_export.c src/ft_unset.c src/ft_env.c src/ft_echo.c \
 	src/shared_fun.c src/converter.c src/signals_handler.c \

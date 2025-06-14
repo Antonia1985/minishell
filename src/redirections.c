@@ -109,6 +109,19 @@ void    here_doc(char *delimeter, t_env *env_list, t_shell_state *state)
 
 }
 
+void    apply_redirections(t_command *cmd)
+{
+    int redir_type;
+
+    redir_type = redirection_type(cmd);
+    if(redir_type == 1)
+        redirect_fd(cmd->infile, 1);
+    if(redir_type == 2)
+        redirect_fd(cmd->outfile, 2);
+    if(redir_type == 3)
+        redirect_fd(cmd->outfile, 3);
+}
+
 /*
 Next Steps
 < (input redirection): use open(..., O_RDONLY) then dup2(fd, STDIN_FILENO).

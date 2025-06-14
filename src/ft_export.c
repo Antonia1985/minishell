@@ -99,14 +99,10 @@ void    update_envp_value(t_env **env_list, char *key, char *value, t_shell_stat
     t_env   *current = *env_list;
     while(current)
     {
-        printf("current->key = %s, key = %s\n",current->key, key);
         if(ft_strcmp(current->key, key)== 0)
         {
-            
-            printf("current->value = %s, value = %s\n",current->value, value);
             free(current->value);
-            current->value = value;         
-            printf("after change: current->value = %s, value = %s\n",current->value, value);   
+            current->value = value;
             if(!current)
             {
                 free_list(variables);
@@ -139,10 +135,8 @@ int    ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state)
     t_env   *copy;
     t_env   *variables;
     int     i;
-    //char    *key_equal;
-    //int     key_equ_len;
     char    *value_env;
-    char    *key_net;//add it only inside the if() that you need it
+    char    *key_net;
         
     g_exit_status = 0;
     i = 0;
@@ -158,12 +152,7 @@ int    ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state)
     }
     else
     {
-        variables = env_list_from_envp(cmd_argv+1, state, 0);
-        //key_equal = ft_strjoin(variables->key, "=");
-        
-        //key_equ_len = ft_strlen(key_equal);       
-        //print_list(variables);
-        //free_list(variables);
+        variables = env_list_from_envp(cmd_argv+1, state, 0);        
         while (variables)
         {
             if (!contains_invalid_char(variables))
@@ -172,12 +161,9 @@ int    ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state)
                 if(!contains_equal_sign(variables->key))//if input contains just "key" no '='
                 {
                     key_net = ft_strtrim(variables->key, "=");
-                    printf("inside if(!contains_equal_sign(key_net)//if input contains just key no '='\n");
-                    printf("variables->key:%s --- key_net:%s --- key_equal:\n",variables->key, key_net);                     
+                   
                     if(!already_exists_in_list(*env_list, key_net, ft_strlen(key_net)))//if key doesn't exists at all
                     {
-                        printf("inside if(!already_exists_in_list(*env_list, key_net, ft_strlen(key_net)))//if key doesn't exists at all\n");
-                        printf("variables->key:%s --- key_net:%s --- key_equal:\n",variables->key, key_net );
                         free(key_net);
                         variables->value = ft_strdup("");
                         if (!variables->value )
@@ -193,25 +179,16 @@ int    ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state)
                 }
                 else // if input has '='  ie: "key=..."
                 {
-                    key_net = ft_strtrim(variables->key, "=");
-                    printf("else // if input has '='  ie: key=...\n");
-                    printf("variables->key:%s --- key_net:%s --- key_equal:\n",variables->key, key_net);
-                    //key_net = ft_strtrim(variables->key, "=");
+                    key_net = ft_strtrim(variables->key, "=");                   
                     if(!already_exists_in_list(*env_list, key_net, ft_strlen(key_net))) //if key doesn't exist in envp
-                    {     
-                        printf("inside if(!already_exists_in_list(*env_list, key_net, ft_strlen(key_net))) //if key doesn't exist in envp)\n");
-                        printf("variables->key:%s --- key_net:%s --- key_equal:\n",variables->key, key_net);                   
+                    {  
                         add_envp_in_list(env_list, key_net, variables->value, state, variables); //just add "key=..." , all the input
                     }
                     else //if "key=..." exists
                     {
-                        printf("else //if key=... exists\n");
-                        printf("variables->key:%s --- key_net:%s --- key_equal:\n",variables->key, key_net);                   
                         value_env = get_env_list_value(*env_list, key_net);
                         if(ft_strcmp(value_env, variables->value) != 0) //if the values are different update the env
                         {
-                            printf("if(ft_strcmp(value_env, variables->value) != 0) //if the values are different update the env\n");
-                            printf("variables->key:%s --- key_net:%s --- key_equal:\n",variables->key, key_net);
                             update_envp_value(env_list, key_net, variables->value, state, variables);
                         }
                         else  //if "key=..." exists and variables are the same, nothing happens, continue;

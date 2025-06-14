@@ -53,9 +53,29 @@ int	get_input(char **input, t_env *env_list, t_shell_state *state)
 	return(2);
 }
 
+int needs_fork(t_command *cmd) 
+{
+   return (cmd->has_pipe || cmd->heredoc);
+}
 
-int needs_fork(t_command *cmd) {
-   return (cmd->has_pipe || cmd->heredoc || !should_run_in_parent(cmd->argv[0]));
+void dispatcher(t_command *cmd, t_shell_state *state)
+{
+	if (is_builtin(cmd->argv[0]) && !needs_fork(cmd))
+	{
+		printf("entered in: is_builtin(cmd->argv[0]) && !needs_fork(cmd)\n"); //delete it
+			
+		g_exit_status = execute_builtin(cmd, state);
+	}
+	else if (state->full_path || (is_builtin(cmd->argv[0]) && needs_fork(cmd)))
+	{
+		printf("entered in: state->full_path || (is_builtin(cmd->argv[0]) && needs_fork(cmd))\n"); //delete it
+		g_exit_status = execute_fork(cmd, state->full_path, state);
+	}
+	else
+	{
+		fprintf(stderr, "%s: command not found\n", cmd->argv[0]); //"minishell: %s: command not found\n"
+		g_exit_status = 127;
+	}
 }
 
 int main(int argc, char **argv, char **envp)
@@ -66,9 +86,7 @@ int main(int argc, char **argv, char **envp)
 	signals_handler();
 	t_env *env_list = env_list_from_envp(envp, NULL, 1);
 	while (1)
-	{			
-		char	*command;
-		//char	**cmd_argv;	
+	{
 		char	*input;
 		t_shell_state *state;
 
@@ -80,8 +98,7 @@ int main(int argc, char **argv, char **envp)
 		}
 		ft_memset(state, 0, sizeof(t_shell_state));
 		state->env_list = env_list;
-				
-		
+						
 		int input_res = get_input(&input, env_list, state);
 		if(input_res == 0) //readline() returned NULL on EOF (Ctrl+D)
 		{
@@ -95,25 +112,11 @@ int main(int argc, char **argv, char **envp)
 			continue;
 		}
 		t_command *cmd = parse_input(input);
-		command = cmd->argv[0];
 		state->cmd = cmd;		
 		state->path_list = get_path_list(state);
-		state->full_path = get_full_path(command, state->path_list, state);
+		state->full_path = get_full_path(cmd->argv[0], state->path_list, state);
 		
-		if (is_builtin(command) && !needs_fork(cmd))
-		{
-			g_exit_status = execute_builtin(cmd, state);			
-		}		
-		//else if (exists_in_path(command, state))
-		else if (state->full_path)
-		{
-			g_exit_status = execute(cmd, state->full_path, state);
-		}
-		else
-		{
-			fprintf(stderr, "%s: command not found\n", command); //"minishell: %s: command not found\n"
-    		g_exit_status = 127;
-		}
+		dispatcher(cmd, state);		
 		clean_up_all(state, 0);
 
 	}	
@@ -121,3 +124,25 @@ int main(int argc, char **argv, char **envp)
 	rl_clear_history();
 	return(g_exit_status);
 }
+
+/*
+info to understant dispatcher:
+| Builtin | Stand-alone  	| With redirections only (e.g. >, <, >>, <<)| In a pipeline (|) 			 | only_in_parent (<-useless feature) |
+|:--------|:----------------|:------------------------------------------|:-------------------------------|:---------------|
+| echo 	  | Parent (no fork)| Parent (apply redirs → echo) 		        | Child (fork → redirs → echo) 	 |    	0		  |
+| pwd 	  | Parent (no fork)| Parent (apply redirs → pwd) 		        | Child (fork → redirs → pwd) 	 |    	0		  |
+| env 	  | Parent (no fork)| Parent (apply redirs → env) 		        | Child (fork → redirs → env) 	 |    	0		  |
+| cd 	  | Parent (no fork)| Parent (apply redirs → cd) 		        | Child (fork → redirs → cd)⁺ 	 | 		1 		  |
+| export  | Parent (no fork)| Parent (apply redirs → export) 	        | Child (fork → redirs → export)⁺| 		1 		  |
+| unset	  | Parent (no fork)| Parent (apply redirs → unset) 	        | Child (fork → redirs → unset)⁺ | 		1 		  |
+| exit 	  | Parent (no fork)| Parent (apply redirs → exit) 		        | Child (fork → redirs → exit)⁺  | 		1 		  |
+
+
+⁺ Stateful built-ins in a pipeline run in a child, but their effects (CWD, env, or shell exit) do not propagate back to the parent shell.
+
+Parent (no fork) = apply any redirections in the shell process, then call the builtin function so it really changes your shell’s state.
+
+Child (fork) = fork first, set up redirections in the child, then call the builtin (or execve for externals); the parent waits on it.
+
+only_in_parent = 1 flags the four builtins whose state changes (cd/export/unset/exit) must run in the parent when not in a pipeline.
+*/

@@ -7,7 +7,7 @@ static t_builtin g_builtins[] = {
     {"export", ft_export, 1},
     {"unset", ft_unset, 1},
     {"echo", ft_echo, 0},
-    {"pwd", ft_pwd, 0},   
+    {"pwd", ft_pwd, 0},
     {"env", ft_env, 0},
     {NULL, NULL, 0}
 };
@@ -36,24 +36,21 @@ int	should_run_in_parent(char *command)
     return (0);
 }
 
-
 int execute_builtin(t_command *cmd, t_shell_state *state)
 {
     int status;
     int i = 0;
-    int redir_type;
-
-	redir_type = redirection_type(cmd);
+    
     while (g_builtins[i].name != NULL)
     {
         if (ft_strcmp(cmd->argv[0], g_builtins[i].name) == 0)
-        {           
-            if(redir_type == 1)
-			redirect_fd(cmd->infile, 1);
-            if(redir_type == 2)
-                redirect_fd(cmd->outfile, 2);
-            if(redir_type == 3)
-                redirect_fd(cmd->outfile, 3);
+        {
+            if(cmd-> has_redirection)
+            {
+                printf("entered in: cmd-> has_redirection\n"); //delete it
+                apply_redirections(cmd);
+            }
+            printf("entered in: executing the builtin\n");	
             status = g_builtins[i].func(cmd->argv, &state->env_list, state);
             g_exit_status = status;
             return status;
