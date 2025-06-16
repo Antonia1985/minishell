@@ -37,15 +37,15 @@ char	*get_full_path(char *command, char **path_list, t_shell_state *state)
 		if (access(command_full_path, X_OK) == 0)
 		{
 			state->full_path = command_full_path;
-			return (command_full_path);			
-		}	
+			return (command_full_path);
+		}
 		free(command_full_path);
 		i++;
 	}	
 	return (NULL);
 }
 
-int execute_fork(t_command *cmd, char *full_path, t_shell_state *state)
+int execute_external(t_command *cmd, char *full_path, t_shell_state *state)
 {		
 	pid_t pid;
 	char **envp;
@@ -53,25 +53,25 @@ int execute_fork(t_command *cmd, char *full_path, t_shell_state *state)
 	pid = fork();
 	if (pid == 0)// Child process
 	{	
-		printf("entered in: execute_fork of fork_executor\n"); //delete it
+		//printf("entered in: execute_fork of fork_executor\n"); //delete it
 		envp = env_list_to_envp(state->env_list, state);		
-		if(is_builtin(cmd->argv[0]))		
-			execute_builtin(cmd, state);
-		else 
-		{
+		//if(is_builtin(cmd->argv[0]))
+		//	execute_builtin(cmd, state);
+		//else 
+		//{
 			if(cmd->has_redirection)
 			{
-				printf("entered in: cmd-> has_redirection \n"); //delete it
+				//printf("entered in: cmd-> has_redirection \n"); //delete it
 				apply_redirections(cmd);			
 			}
 			execve(full_path, cmd->argv, envp);
 			free_array(envp);
-			perror("minishell: execve:");
+			perror("minishell: execve");
 			clean_up_all(state, 1);
 			printf("exit\n");
 			g_exit_status = 126;
 			exit(126);
-		}
+		//}
 	}
 	else if(pid > 0) // Parent process
 	{
@@ -86,7 +86,7 @@ int execute_fork(t_command *cmd, char *full_path, t_shell_state *state)
 	}
 	else 
 	{
-		perror("minishell: fork:");		
+		perror("minishell: fork");		
         return (1);
 	}
 	return(1);

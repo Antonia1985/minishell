@@ -9,8 +9,7 @@ int redirection_type(t_command *cmd)
 		return (2);
 	if(cmd->outfile && cmd->append) // >>
 		return (3);
-	//if(cmd->heredoc)
-		//return (4);
+	
 	return (0);
 }
 
@@ -48,14 +47,28 @@ void    redirect_fd(char *file, int redirection_type)
     close (fd);
 }
 
-void    here_doc(char *delimeter, t_env *env_list, t_shell_state *state)
+void    apply_redirections(t_command *cmd)
+{
+    int redir_type;
+
+    redir_type = redirection_type(cmd);
+    if(redir_type == 1)
+        redirect_fd(cmd->infile, 1);
+    if(redir_type == 2)
+        redirect_fd(cmd->outfile, 2);
+    if(redir_type == 3)
+        redirect_fd(cmd->outfile, 3);
+    
+}
+
+/*void    here_doc(t_command *cmd, char *delimeter, t_env *env_list, t_shell_state *state)
 {
     char   *line;
     char   *expanded_line;
     char    **input;    
     int     i;
     int     capacity;
-    int     expansions; /* must be set from parser */;
+    int     expansions; // must be set from parser ;
 
     i = 0;
     
@@ -81,7 +94,7 @@ void    here_doc(char *delimeter, t_env *env_list, t_shell_state *state)
             while(input[i])
                 printf("%s", input[i]);
             //return all the read lines
-             free(line);          // ✓ this is correct
+            free(line);          // ✓ this is correct
             input[i] = NULL;
             break;
         }
@@ -100,27 +113,62 @@ void    here_doc(char *delimeter, t_env *env_list, t_shell_state *state)
             input[i] = ft_strdup(line);
             free(line);
         }
-        i++;
-        
+        i++;        
     }
-    i = 0;
-    while(input[i])
-        printf("%s", input[i]);
 
-}
+    int fd[2];
+    if(pipe(fd) == -1)
+    {
+        perror("pipe");
+        exit(1);
+    }
 
-void    apply_redirections(t_command *cmd)
-{
-    int redir_type;
+    pid_t pid = fork();
+    if(pid == -1)
+    {
+		perror("minishell: fork:");		
+        return (1);
+	}
+    if (pid == 0)// child reader
+    {
+        close(fd[1]);
+        dup2(fd[0], STDIN_FILENO);
+        close(fd[0]);
+    
+		char **envp = env_list_to_envp(state->env_list, state);		
+		if(is_builtin(cmd->argv[0]))
+			execute_builtin(cmd, state);
+		else 
+		{			
+			execve(state->full_path, cmd->argv, envp);
+			free_array(envp);
+			perror("minishell: execve:");
+			clean_up_all(state, 1);
+			printf("exit\n");
+			g_exit_status = 126;
+			exit(126);
+		}
+	}
+	else if(pid > 0) // Parent process
+	{
+        close(fd[0]);
+        close(fd[1]);
+        int status;
+		waitpid(pid, &status, 0);
+       	if (WIFEXITED(status))
+			return (WEXITSTATUS(status));
+		else if (WIFSIGNALED(status))
+			return (128 + WTERMSIG(status)); // Bash does this!
+		else
+			return (1);
+	}	
+	return(1);
 
-    redir_type = redirection_type(cmd);
-    if(redir_type == 1)
-        redirect_fd(cmd->infile, 1);
-    if(redir_type == 2)
-        redirect_fd(cmd->outfile, 2);
-    if(redir_type == 3)
-        redirect_fd(cmd->outfile, 3);
-}
+    //i = 0;
+    //while(input[i])
+    //    printf("%s", input[i]);
+
+}*/
 
 /*
 Next Steps

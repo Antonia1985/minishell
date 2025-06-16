@@ -78,8 +78,8 @@ void    add_envp_in_list(t_env **env_list, char *key, char *value,  t_shell_stat
         free_list(variables);
         malloc_failure(state);
     }
-    new_node->key = key;
-    new_node->value = value;
+    new_node->key = ft_strdup(key);
+    new_node->value = ft_strdup(value);
     new_node->next = NULL;
     if(*env_list == NULL)
     {
@@ -102,7 +102,7 @@ void    update_envp_value(t_env **env_list, char *key, char *value, t_shell_stat
         if(ft_strcmp(current->key, key)== 0)
         {
             free(current->value);
-            current->value = value;
+            current->value = ft_strdup(value);
             if(!current)
             {
                 free_list(variables);
@@ -152,12 +152,12 @@ int    ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state)
     }
     else
     {
-        variables = env_list_from_envp(cmd_argv+1, state, 0);        
+        variables = env_list_from_envp(cmd_argv+1, state, 0);
+        t_env *vars_head = variables;
         while (variables)
         {
             if (!contains_invalid_char(variables))
-            {
-                
+            {                
                 if(!contains_equal_sign(variables->key))//if input contains just "key" no '='
                 {
                     key_net = ft_strtrim(variables->key, "=");
@@ -179,7 +179,7 @@ int    ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state)
                 }
                 else // if input has '='  ie: "key=..."
                 {
-                    key_net = ft_strtrim(variables->key, "=");                   
+                    key_net = ft_strtrim(variables->key, "=");
                     if(!already_exists_in_list(*env_list, key_net, ft_strlen(key_net))) //if key doesn't exist in envp
                     {  
                         add_envp_in_list(env_list, key_net, variables->value, state, variables); //just add "key=..." , all the input
@@ -196,9 +196,9 @@ int    ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state)
                             free(key_net);
                             variables = variables->next;
                             continue;
-                        }
-                                                
+                        }                                                
                     }
+                    free(key_net);
                 }
             }
             else
@@ -210,12 +210,9 @@ int    ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state)
                 g_exit_status = 1;                
             }                  
             variables = variables->next;
-        }
-        
-       
-        free_list(variables);        
+        }       
+        free_list(vars_head);
     }
-
     return(g_exit_status); 
 }
 

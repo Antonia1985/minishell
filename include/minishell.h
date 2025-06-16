@@ -52,13 +52,12 @@ typedef struct s_builtin{
     int     only_in_parent;
 }t_builtin;
 
-
-
-extern int  g_exit_status;
+extern int  g_exit_status; //check if better: volatile sig_atomic_t g_exit_status;
 
 int		main(int argc, char **argv, char **envp);
-int		execute_fork(t_command *cmd, char *full_path, t_shell_state *state);
+int		execute_external(t_command *cmd, char *full_path, t_shell_state *state);
 int		execute_builtin(t_command *cmd, t_shell_state *state);
+int    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count);
 int		is_builtin(char *command);
 int     should_run_in_parent(char *command);
 //int		exists_in_path(char *command, t_shell_state *state);
@@ -94,7 +93,6 @@ void    signals_handler(void);
 
 //redirections
 void     redirect_fd(char *file, int redirection_type);
-void    here_doc(char *delimeter, t_env *env_list, t_shell_state *state);
 int     redirection_type(t_command *cmd);
 void    apply_redirections(t_command *cmd);
 

@@ -16,7 +16,6 @@ t_env *env_list_from_envp(char **envp, t_shell_state *state, int for_envp)
     i = 0;
     while(envp[i])
     {
-
         if(for_envp)
         {
             sep = ft_strchr(envp[i], '=');
@@ -65,7 +64,7 @@ t_env *env_list_from_envp(char **envp, t_shell_state *state, int for_envp)
         else
             value = NULL;
 
-        t_env *node = malloc(sizeof(t_env));
+        t_env *node = malloc(sizeof(t_env));                
         if(!node)
         {
             free(key);

@@ -58,24 +58,31 @@ int needs_fork(t_command *cmd)
    return (cmd->has_pipe || cmd->heredoc);
 }
 
-void dispatcher(t_command *cmd, t_shell_state *state)
+void dispatcher(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count)
 {
-	if (is_builtin(cmd->argv[0]) && !needs_fork(cmd))
+	if (!cmd->has_pipe)
 	{
-		printf("entered in: is_builtin(cmd->argv[0]) && !needs_fork(cmd)\n"); //delete it
-			
-		g_exit_status = execute_builtin(cmd, state);
-	}
-	else if (state->full_path || (is_builtin(cmd->argv[0]) && needs_fork(cmd)))
-	{
-		printf("entered in: state->full_path || (is_builtin(cmd->argv[0]) && needs_fork(cmd))\n"); //delete it
-		g_exit_status = execute_fork(cmd, state->full_path, state);
+		if (is_builtin(cmd->argv[0]))// if it's builtin, with or without redirs
+		{
+			//printf("entered in: !cmd->has_pipe + is_builtin(cmd->argv[0]) \n"); //delete it			
+			g_exit_status = execute_builtin(cmd, state);
+		}
+		else if (state->full_path)// if it's exter, with or without redirs
+		{
+			//printf("entered in: !cmd->has_pipe + state->full_path \n"); //delete it
+			g_exit_status = execute_external(cmd, state->full_path, state); //for here			
+		}
+		else
+		{
+			//fprintf(stderr, "%s: command not found\n", cmd->argv[0]); //"minishell: %s: command not found\n"
+			g_exit_status = 127;
+		}
 	}
 	else
 	{
-		fprintf(stderr, "%s: command not found\n", cmd->argv[0]); //"minishell: %s: command not found\n"
-		g_exit_status = 127;
-	}
+		//printf("entered in: else cmd->has_pipe \n"); //delete it
+		g_exit_status = pipe_executor(cmd, state, pids, pid_count);
+	}	
 }
 
 int main(int argc, char **argv, char **envp)
@@ -87,6 +94,8 @@ int main(int argc, char **argv, char **envp)
 	t_env *env_list = env_list_from_envp(envp, NULL, 1);
 	while (1)
 	{
+		pid_t pids[256];
+    	int pid_count = 0;
 		char	*input;
 		t_shell_state *state;
 
@@ -116,10 +125,10 @@ int main(int argc, char **argv, char **envp)
 		state->path_list = get_path_list(state);
 		state->full_path = get_full_path(cmd->argv[0], state->path_list, state);
 		
-		dispatcher(cmd, state);		
+		dispatcher(cmd, state, pids, &pid_count);		
 		clean_up_all(state, 0);
 
-	}	
+	}
 	free_list(env_list);
 	rl_clear_history();
 	return(g_exit_status);
@@ -127,16 +136,16 @@ int main(int argc, char **argv, char **envp)
 
 /*
 info to understant dispatcher:
-| Builtin | Stand-alone  	| With redirections only (e.g. >, <, >>, <<)| In a pipeline (|) 			 | only_in_parent (<-useless feature) |
-|:--------|:----------------|:------------------------------------------|:-------------------------------|:---------------|
-| echo 	  | Parent (no fork)| Parent (apply redirs → echo) 		        | Child (fork → redirs → echo) 	 |    	0		  |
-| pwd 	  | Parent (no fork)| Parent (apply redirs → pwd) 		        | Child (fork → redirs → pwd) 	 |    	0		  |
-| env 	  | Parent (no fork)| Parent (apply redirs → env) 		        | Child (fork → redirs → env) 	 |    	0		  |
-| cd 	  | Parent (no fork)| Parent (apply redirs → cd) 		        | Child (fork → redirs → cd)⁺ 	 | 		1 		  |
-| export  | Parent (no fork)| Parent (apply redirs → export) 	        | Child (fork → redirs → export)⁺| 		1 		  |
-| unset	  | Parent (no fork)| Parent (apply redirs → unset) 	        | Child (fork → redirs → unset)⁺ | 		1 		  |
-| exit 	  | Parent (no fork)| Parent (apply redirs → exit) 		        | Child (fork → redirs → exit)⁺  | 		1 		  |
-
+| Builtin | Stand-alone  		| With redirections only (e.g. >, <, >>, <<)| In a pipeline (|) 			 | only_in_parent (<-useless feature) |
+|:--------|:----------------	|:------------------------------------------|:-------------------------------|:---------------|
+| echo 	  | Parent (no fork)	| Parent (apply redirs → echo) 		        | Child (fork → redirs → echo) 	 |    	0		  |
+| pwd 	  | Parent (no fork)	| Parent (apply redirs → pwd) 		        | Child (fork → redirs → pwd) 	 |    	0		  |
+| env 	  | Parent (no fork)	| Parent (apply redirs → env) 		        | Child (fork → redirs → env) 	 |    	0		  |
+| cd 	  | Parent (no fork)	| Parent (apply redirs → cd) 		        | Child (fork → redirs → cd)⁺ 	 | 		1 		  |
+| export  | Parent (no fork)	| Parent (apply redirs → export) 	        | Child (fork → redirs → export)⁺| 		1 		  |
+| unset	  | Parent (no fork)	| Parent (apply redirs → unset) 	        | Child (fork → redirs → unset)⁺ | 		1 		  |
+| exit 	  | Parent (no fork)	| Parent (apply redirs → exit) 		        | Child (fork → redirs → exit)⁺  | 		1 		  |
+| execve  | fork_exectr -> fork	| fork_executor -> redirts -> fork			| pipe_exectr → redirs → execve	 |		0		  |
 
 ⁺ Stateful built-ins in a pipeline run in a child, but their effects (CWD, env, or shell exit) do not propagate back to the parent shell.
 
