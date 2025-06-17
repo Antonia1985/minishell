@@ -74,31 +74,28 @@ int dispatcher(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count
 		}
 		else
 		{
-			//fprintf(stderr, "%s: command not found\n", cmd->argv[0]); //"minishell: %s: command not found\n"
+			printf("minishell: command not found: %s\n",cmd->argv[0]); //"minishell: %s: command not found\n"
 			g_exit_status = 127;
 		}
 	}
 	else
-	{
-		int i = 0;
+	{		
 		//printf("entered in: else cmd->has_pipe \n"); //delete it
 		pipe_executor(cmd, state, pids, pid_count);
-			if (cmd->next == NULL) // only the last parent will call waitpid() for all child PIDs.
+			
+		int i = 0;
+		int status;
+		while(i < *pid_count) 
 		{
-			int status;
-			while(i < *pid_count) 
-			{
-				waitpid(pids[i], &status, 0);
-				i++;
-			}
-			if (WIFEXITED(status))
-				g_exit_status = WEXITSTATUS(status);
-			else if (WIFSIGNALED(status))
-				g_exit_status = (128 + WTERMSIG(status)); // Bash does this!
-			else
-				g_exit_status = 1;
+			waitpid(pids[i], &status, 0);
+			i++;
 		}
-    	
+		if (WIFEXITED(status))
+			g_exit_status = WEXITSTATUS(status);
+		else if (WIFSIGNALED(status))
+			g_exit_status = (128 + WTERMSIG(status)); // Bash does this!
+		else
+			g_exit_status = 1;    	
 	}	
 	return(g_exit_status);
 }

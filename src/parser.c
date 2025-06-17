@@ -8,23 +8,28 @@ static int is_redirect(char *s) {
 }
 
 static void assign_redirect(t_command *cmd, char **tokens, int *i) {
-    // Mark that this command has a redirection
     cmd->has_redirection = 1;
 
-    if (!ft_strcmp(tokens[*i], "<")) {
-        cmd->infile = ft_strdup(tokens[++(*i)]);
-    } else if (!ft_strcmp(tokens[*i], ">")) {
-        cmd->outfile = ft_strdup(tokens[++(*i)]);
+    char *trimmed = ft_strtrim(tokens[++(*i)], " \t\r\n");
+
+    if (!ft_strcmp(tokens[*i - 1], "<")) {
+        cmd->infile = trimmed;
+    } else if (!ft_strcmp(tokens[*i - 1], ">")) {
+        cmd->outfile = trimmed;
         cmd->append = 0;
-    } else if (!ft_strcmp(tokens[*i], ">>")) {
-        cmd->outfile = ft_strdup(tokens[++(*i)]);
+    } else if (!ft_strcmp(tokens[*i - 1], ">>")) {
+        cmd->outfile = trimmed;
         cmd->append = 1;
-    } else if (!ft_strcmp(tokens[*i], "<<")) {
+    } else if (!ft_strcmp(tokens[*i - 1], "<<")) {
         cmd->heredoc = 1;
-        cmd->heredoc_delim = ft_strdup(tokens[++(*i)]);
+        cmd->heredoc_delim = trimmed;
+    } else {
+        free(trimmed); // fallback cleanup
     }
+
     (*i)++;
 }
+
 
 // Parses the input string into a linked list of t_command
 // Each t_command may have arguments, redirections, heredoc, and pipe flag
@@ -63,7 +68,9 @@ t_command *parse_input(const char *input) {
             if (is_redirect(tokens[i])) {
                 assign_redirect(cmd, tokens, &i);
             } else {
-                cmd->argv[argc++] = ft_strdup(tokens[i++]);
+                char *clean = ft_strtrim(tokens[i], " \t\r\n");
+                cmd->argv[argc++] = clean;
+                i++;
             }
         }
         cmd->argv[argc] = NULL;

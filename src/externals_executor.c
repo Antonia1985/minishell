@@ -55,22 +55,19 @@ int execute_external(t_command *cmd, char *full_path, t_shell_state *state)
 	{	
 		//printf("entered in: execute_fork of fork_executor\n"); //delete it
 		envp = env_list_to_envp(state->env_list, state);		
-		//if(is_builtin(cmd->argv[0]))
-		//	execute_builtin(cmd, state);
-		//else 
-		//{
-			if(cmd->has_redirection)
-			{
-				//printf("entered in: cmd-> has_redirection \n"); //delete it				
-				apply_redirections(cmd);
-			}
-			execve(full_path, cmd->argv, envp);
-			free_array(envp);
-			perror("minishell: execve");
-			clean_up_all(state, 1);
-			printf("exit\n");
-			g_exit_status = 126;
-			exit(126);
+		
+		if(cmd->has_redirection)
+		{
+			//printf("entered in: cmd-> has_redirection \n"); //delete it				
+			apply_redirections(cmd);
+		}
+		execve(full_path, cmd->argv, envp);
+		free_array(envp);
+		perror("minishell: execve");
+		clean_up_all(state, 1);
+		printf("exit\n");
+		g_exit_status = 126;
+		exit(126);
 		//}
 	}
 	else if(pid > 0) // Parent process
