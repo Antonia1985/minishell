@@ -57,7 +57,7 @@ extern int  g_exit_status; //check if better: volatile sig_atomic_t g_exit_statu
 int		main(int argc, char **argv, char **envp);
 int		execute_external(t_command *cmd, char *full_path, t_shell_state *state);
 int		execute_builtin(t_command *cmd, t_shell_state *state);
-int    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count);
+void    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count);
 int		is_builtin(char *command);
 int     should_run_in_parent(char *command);
 //int		exists_in_path(char *command, t_shell_state *state);

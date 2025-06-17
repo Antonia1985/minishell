@@ -58,7 +58,7 @@ int needs_fork(t_command *cmd)
    return (cmd->has_pipe || cmd->heredoc);
 }
 
-void dispatcher(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count)
+int dispatcher(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count)
 {
 	if (!cmd->has_pipe)
 	{
@@ -80,9 +80,27 @@ void dispatcher(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_coun
 	}
 	else
 	{
+		int i = 0;
 		//printf("entered in: else cmd->has_pipe \n"); //delete it
-		g_exit_status = pipe_executor(cmd, state, pids, pid_count);
+		pipe_executor(cmd, state, pids, pid_count);
+			if (cmd->next == NULL) // only the last parent will call waitpid() for all child PIDs.
+		{
+			int status;
+			while(i < *pid_count) 
+			{
+				waitpid(pids[i], &status, 0);
+				i++;
+			}
+			if (WIFEXITED(status))
+				g_exit_status = WEXITSTATUS(status);
+			else if (WIFSIGNALED(status))
+				g_exit_status = (128 + WTERMSIG(status)); // Bash does this!
+			else
+				g_exit_status = 1;
+		}
+    	
 	}	
+	return(g_exit_status);
 }
 
 int main(int argc, char **argv, char **envp)
@@ -125,7 +143,7 @@ int main(int argc, char **argv, char **envp)
 		state->path_list = get_path_list(state);
 		state->full_path = get_full_path(cmd->argv[0], state->path_list, state);
 		
-		dispatcher(cmd, state, pids, &pid_count);		
+		g_exit_status = dispatcher(cmd, state, pids, &pid_count);		
 		clean_up_all(state, 0);
 
 	}

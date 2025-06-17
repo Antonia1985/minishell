@@ -49,7 +49,7 @@ int execute_external(t_command *cmd, char *full_path, t_shell_state *state)
 {		
 	pid_t pid;
 	char **envp;
-	
+
 	pid = fork();
 	if (pid == 0)// Child process
 	{	
@@ -61,8 +61,8 @@ int execute_external(t_command *cmd, char *full_path, t_shell_state *state)
 		//{
 			if(cmd->has_redirection)
 			{
-				//printf("entered in: cmd-> has_redirection \n"); //delete it
-				apply_redirections(cmd);			
+				//printf("entered in: cmd-> has_redirection \n"); //delete it				
+				apply_redirections(cmd);
 			}
 			execve(full_path, cmd->argv, envp);
 			free_array(envp);

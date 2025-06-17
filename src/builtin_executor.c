@@ -38,22 +38,26 @@ int	should_run_in_parent(char *command)
 
 int execute_builtin(t_command *cmd, t_shell_state *state)
 {
-    int status;
+    //int status;
     int i = 0;
-    
+    int stdout = -1;
+
     while (g_builtins[i].name != NULL)
     {
         if (ft_strcmp(cmd->argv[0], g_builtins[i].name) == 0)
         {
             if(cmd-> has_redirection)
             {
-                printf("entered in: cmd-> has_redirection\n"); //delete it
+                //printf("entered in: cmd-> has_redirection\n"); //delete it
+                stdout = dup(STDOUT_FILENO);
                 apply_redirections(cmd);
             }
-            printf("entered in: executing the builtin\n");	
-            status = g_builtins[i].func(cmd->argv, &state->env_list, state);
-            g_exit_status = status;
-            return status;
+            //printf("entered in: executing the builtin\n"); //delete it
+            g_exit_status = g_builtins[i].func(cmd->argv, &state->env_list, state);
+
+            dup2(stdout, STDOUT_FILENO);
+            close (stdout);
+            return g_exit_status;
         }
         i++;
     }   
@@ -67,5 +71,4 @@ Can run without forking, for performance.
 
 Must fork if they're:
 -In a pipeline
--Involved with redirection (e.g. >, <, >>)
 */
