@@ -1,7 +1,11 @@
 #include "minishell.h"
 #include "libft.h"
-void    on_execve_failure(char **envp, t_shell_state *state)
+
+//cat file.txt | grep word | wc -l
+
+void    on_execve_failure(char **envp, char *path, t_shell_state *state)
 {
+    free(path); // only runs if execve fails
     free_array(envp);
     perror("minishell: execve ");
     clean_up_all(state, 1);
@@ -19,167 +23,111 @@ void fork_fail(pid_t pid)
     }
 }
 
-void    child(int pipefd[2], int std_fileno, t_command *cmd, t_shell_state *state)
+void    pipe_fail()
 {
-    if(std_fileno == 0)
-        close(pipefd[1]);
-    else       
-        close(pipefd[0]);
-    dup2(pipefd[std_fileno], std_fileno);
-    close(pipefd[std_fileno]);
-    if(is_builtin(cmd->argv[0]))
-    {
-        int status = execute_builtin(cmd, state);
-        clean_up_all(state, 0);
-        free_array(env_list_to_envp(state->env_list, state));
-        exit(status);
-    }	
-    else 
-    {
-        if(cmd->has_redirection)
-            apply_redirections(cmd);   
-        execve(state->full_path, cmd->argv, env_list_to_envp(state->env_list, state));
-        on_execve_failure(env_list_to_envp(state->env_list, state), state);
-    }
+    perror("pipe");
+    exit(1);
 }
 
 void    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count)
 {
-    int child_reader; 
-    int pipefd1[2];
-    int pipefd2[2];
-    int prev_fd_0;
-    pid_t pid;
+    char **envp;
+    int prev_pipe[2];
+    int current_pipe[2];
 
-    child_reader = 0;
+    prev_pipe[0]= STDIN_FILENO;
+    prev_pipe[1]=-1;
+      
     while(cmd)
     {
-        if(cmd->next && cmd->has_pipe)
+        if(cmd->has_pipe && cmd->next)// if pipe follows create a pipe
         {
-            if(pipe(pipefd1) == -1)
-            {
-                perror("pipe");
-                exit(1);
-            }
+            if(pipe(current_pipe) == -1)
+                pipe_fail();
         }
-        
-        //it's writer
-        if(cmd->has_pipe && !child_reader)
+        else // if it's the last 
         {
-            pid = fork();
-            fork_fail(pid);
-            if(pid == 0)
-            {
-                close(pipefd1[0]);
-                dup2(pipefd1[1], STDOUT_FILENO);
-                close(pipefd1[1]);
-                if(is_builtin(cmd->argv[0]))
-                {
-                    int status = execute_builtin(cmd, state);
-                    clean_up_all(state, 0);
-                    free_array(env_list_to_envp(state->env_list, state));
-                    exit(status);
-                }	
-                else 
-                {
-                    if(cmd->has_redirection)
-                        apply_redirections(cmd);   
-                    execve(state->full_path, cmd->argv, env_list_to_envp(state->env_list, state));
-                    on_execve_failure(env_list_to_envp(state->env_list, state), state);
-                }
-            }
-            //parent
-            close(pipefd1[1]);
-            prev_fd_0 = pipefd1[0];
-            pids[*pid_count] = pid;
-            (*pid_count)++;
-            child_reader = 1;
+            current_pipe[0] = -1;
+            current_pipe[1] = STDOUT_FILENO;
         }
-    
-        //it's reader && writer   
-        if (child_reader && cmd->has_pipe)
-        {
-            
-            pid = fork();
-            fork_fail(pid);
-            if(pid == 0)
-            {    
-                dup2(pipefd1[0], STDIN_FILENO);
-                close(pipefd1[0]);
 
-                dup2(pipefd2[1], STDOUT_FILENO);
-                close(pipefd2[1]);
-                
-                if(is_builtin(cmd->argv[0]))
-                {
-                    int status = execute_builtin(cmd, state);
-                    clean_up_all(state, 0);
-                    free_array(env_list_to_envp(state->env_list, state));
-                    exit(status);
-                }	
-                else 
-                {
-                    if(cmd->has_redirection)
-                        apply_redirections(cmd);   
-                    execve(state->full_path, cmd->argv, env_list_to_envp(state->env_list, state));
-                    on_execve_failure(env_list_to_envp(state->env_list, state), state);
-                }
-            }
-            child_reader = 1;
-            pids[*pid_count] = pid;
-            (*pid_count)++;
-            close(pipefd1[0]);
-            close(pipefd2[1]);
-            prev_fd_0 = pipefd2[0];
-        }
-        
-        //it's reader only
-        if (child_reader && !cmd->has_pipe)
+        pids[*pid_count] = fork();
+        fork_fail(pids[*pid_count]);
+        if(pids[*pid_count] == 0)
         {
-            pid = fork();
-            fork_fail(pid);
-            if(pid == 0)
-            {    
-                dup2(pipefd2[0], STDIN_FILENO);
-                close(pipefd2[0]);
-                
-                if(is_builtin(cmd->argv[0]))
-                {
-                    int status = execute_builtin(cmd, state);
-                    clean_up_all(state, 0);
-                    free_array(env_list_to_envp(state->env_list, state));
-                    exit(status);
-                }	
-                else 
-                {
-                    if(cmd->has_redirection)
-                        apply_redirections(cmd);   
-                    execve(state->full_path, cmd->argv, env_list_to_envp(state->env_list, state));
-                    on_execve_failure(env_list_to_envp(state->env_list, state), state);
-                }
+            envp = env_list_to_envp(state->env_list, state);
+            if(prev_pipe[1] != -1) //if this is not the 1st cmd1 |
+            {
+                close(prev_pipe[1]);                
             }
-            child_reader = 0;
-            pids[*pid_count] = pid;
-            (*pid_count)++;        
-            close(prev_fd_0);
+            if(prev_pipe[0] != STDIN_FILENO)//if this is not the 1st cmd1 |
+            {
+                dup2(prev_pipe[0], STDIN_FILENO);
+                close(prev_pipe[0]);
+            }
+
+            if(current_pipe[0] != -1) //if this is not the last | cmd. The last won't have a real current pipe
+            {
+                close(current_pipe[0]);
+            }           
+            if(current_pipe[1] != STDOUT_FILENO)  //if this is not the last | cmd
+            {
+                dup2(current_pipe[1], STDOUT_FILENO);
+                close(current_pipe[1]);
+            }
+
+            if(is_builtin(cmd->argv[0]))
+            {
+                int status = execute_builtin(cmd, state);
+                clean_up_all(state, 0);
+                free_array(envp);
+                exit(status);
+            }	
+            else 
+            {
+                if (!cmd->argv || !cmd->argv[0])
+                {
+                    fprintf(stderr, "minishell: empty command\n");
+                    free_array(envp);
+                    clean_up_all(state, 0);
+                    exit(127);
+                }
+                if(cmd->has_redirection)
+                    apply_redirections(cmd); 
+                char *path = get_full_path(cmd->argv[0], state->path_list, state);
+                if (!path)
+                {
+                    fprintf(stderr, "minishell: %s: command not found\n", cmd->argv[0]);
+                    free_array(envp);
+                    clean_up_all(state, 0);
+                    exit(127);
+                }
+                //fprintf(stderr, "EXECUTING: %s\n", cmd->argv[0]); ///delete it
+                execve(path, cmd->argv, envp);               
+                on_execve_failure(envp, path, state);
+            }
         }
-        
+        //parent 
+        (*pid_count)++;      
+        //close what you have to close
+        if(prev_pipe[0] != STDIN_FILENO) // if it's not the 1st
+            close(prev_pipe[0]);
+        if(current_pipe[1] != STDOUT_FILENO) //if it'not the last cmd
+            close(current_pipe[1]);
+        if (!cmd->next && current_pipe[0] != -1) // Check if it's the last command and current_pipe[0] is a real FD
+            close(current_pipe[0]);
+        // current becomes previous ()
+        prev_pipe[0] = current_pipe[0];
+        prev_pipe[1] = current_pipe[1];
+
         //next command
         if(cmd->next)
-        {
             cmd = cmd->next;
-            free(state->full_path);
-            state->full_path = get_full_path(cmd->argv[0], state->path_list, state);        
-        }
+        else
+            break;
     }
+    if (prev_pipe[0] != STDIN_FILENO && prev_pipe[0] != -1)
+        close(prev_pipe[0]);
+
 }
 
-/*
-✅ Correct Close Behavior (per command)
-
-Command	    Reads_from	    Writes_to	    Close in child
-cmd1	    —	            pipe1[1]	    Close pipe1[0], close pipe1[1] after dup2
-cmd2	    pipe1[0]	    pipe2[1]    	Close pipe1[0] + pipe2[1] after dup2, but NOT pipe2[0]
-cmd3	    pipe2[0]	    —	            Close pipe2[0] after dup2
-
-*/

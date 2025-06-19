@@ -1,6 +1,6 @@
 NAME = minishell
 CC = cc
-CFLAGS = -Wall -Wextra -Werror -g -I./include -I./libft/include -Ignl -fsanitize=address -g
+CFLAGS = -Wall -Wextra -Werror -g -I./include -I./libft/include -fsanitize=address -g
 LDFLAGS = -lreadline -lhistory
 LIBFT = ./libft/libft.a
 SRC = src/main.c src/externals_executor.c src/builtin_executor.c src/pipe_executor.c\
