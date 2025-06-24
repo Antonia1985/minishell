@@ -7,7 +7,6 @@ void	clean_up_all(t_shell_state *state, int free_env)
 		free(state->input);
 	if (state->cmd)
 		free_command_list(state->cmd);
-	//free_array(state->cmd_argv);
 	if (state->full_path)
 		free(state->full_path);
 	if (state->path_list)
@@ -15,7 +14,12 @@ void	clean_up_all(t_shell_state *state, int free_env)
 	if (free_env && state->mini_envp)
 		free_array(state->mini_envp);
 	if (free_env && state->env_list)
-		free_list(state->env_list);	
+		free_list(state->env_list);
+	if(free_env && state->original_stdin_fd != -1)
+	{
+        close(state->original_stdin_fd);
+        state->original_stdin_fd = -1; // Important: Mark as closed
+    }
 	free(state);
 }
 
@@ -25,6 +29,7 @@ void    malloc_failure(t_shell_state *state)
     clean_up_all(state, 1);
     g_exit_status = 1;
 	rl_clear_history();
+	
     exit(g_exit_status);
 }
 
@@ -83,4 +88,40 @@ void	free_array(char **array)
 		i++;
 	}			
 	free(array);
+}
+
+void	print_warning(char *msg, char *insert, t_shell_state *state)
+{
+	int i = 0;
+	char *first_part = NULL;
+	char *second_part = NULL;
+
+	while (msg[i] && msg[i] != '%' )
+		i++;
+	first_part = ft_substr(msg, 0, i);
+	if(!first_part)
+		malloc_failure(state);
+
+	if (msg[i+1] && msg[i+1] == 's')
+	{
+		i= i+2;
+		second_part = ft_substr(msg, i, ft_strlen(msg));
+		if(!second_part)
+		{
+			free(first_part);
+			malloc_failure(state);
+		}
+	}		
+	else 
+		i--;
+	
+	write(2, first_part, ft_strlen(first_part));	
+	free(first_part);
+
+	if(second_part)
+	{
+		write(2, insert, ft_strlen(insert));
+		write(2, second_part, ft_strlen(second_part));
+		free(second_part);
+	}
 }

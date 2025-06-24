@@ -2,7 +2,6 @@
 #include "libft.h"
 
 int g_exit_status = 0;
-
 char *get_current_directory()
 {
 	char *cwd = getcwd(NULL, 0);     // dynamically allocates current directory
@@ -34,7 +33,7 @@ int	get_input(char **input, t_env *env_list, t_shell_state *state)
 	free(prompt);
 	if (!*input) //readline() returned NULL on EOF (Ctrl+D)
 	{
-		printf("exit\n");
+		//printf("exit\n");
 		return(0);
 	}
 	if (**input) // Non-empty input
@@ -60,6 +59,23 @@ int needs_fork(t_command *cmd)
 
 int dispatcher(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count)
 {
+	int saved_stdin = -1;
+	if(cmd->heredoc)
+	{
+		saved_stdin = dup(STDIN_FILENO);
+		if (saved_stdin == -1)
+		{
+            perror("dup");
+            return (1);
+        }
+		if (dup2(cmd->here_doc_read_fd, STDIN_FILENO) == -1)
+		{
+			perror("dup2");
+            close(saved_stdin);
+            return (1);
+		}
+		close(cmd->here_doc_read_fd);
+	}
 	if (!cmd->has_pipe)
 	{
 		if (is_builtin(cmd->argv[0]))// if it's builtin, with or without redirs
@@ -96,7 +112,12 @@ int dispatcher(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count
 			g_exit_status = (128 + WTERMSIG(status)); // Bash does this!
 		else
 			g_exit_status = 1;    	
-	}	
+	}
+	if (cmd->heredoc && saved_stdin != -1)
+	{
+		dup2(saved_stdin, STDIN_FILENO);
+		close(saved_stdin);
+	}
 	return(g_exit_status);
 }
 
@@ -104,7 +125,11 @@ int main(int argc, char **argv, char **envp)
 {	
 	(void)argc;
 	(void)argv;
-
+	int original_stdin_fd = dup(STDIN_FILENO); // duplicate STDIN_FILENO
+    if (original_stdin_fd == -1) {
+        perror("dup");
+        exit(EXIT_FAILURE);
+    }
 	signals_handler();
 	t_env *env_list = env_list_from_envp(envp, NULL, 1);
 	while (1)
@@ -122,12 +147,19 @@ int main(int argc, char **argv, char **envp)
 		}
 		ft_memset(state, 0, sizeof(t_shell_state));
 		state->env_list = env_list;
-						
-		int input_res = get_input(&input, env_list, state);
-		if(input_res == 0) //readline() returned NULL on EOF (Ctrl+D)
+		state->original_stdin_fd = original_stdin_fd;
+
+		if (g_exit_status == 130) // Heredoc Ctrl+C caused readline to return NULL
 		{
+			dup2(state->original_stdin_fd, STDIN_FILENO);			
+		}
+		int input_res = get_input(&input, env_list, state);
+
+		if(input_res == 0 && g_exit_status != 130) //readline() returned NULL on EOF (Ctrl+D)
+		{
+			printf("exit\n");
 			rl_clear_history();
-			clean_up_all(state, 1);// because of this I dont need to free()state->env_list when out of the loop 
+			clean_up_all(state, 1);// because of this I dont need to free()state->env_list when out of the loop
 			exit(0);
 		}
 		if(input_res == 1)
@@ -135,17 +167,44 @@ int main(int argc, char **argv, char **envp)
 			clean_up_all(state, 0);
 			continue;
 		}
-		t_command *cmd = parse_input(input);
-		state->cmd = cmd;		
-		state->path_list = get_path_list(state);
-		state->full_path = get_full_path(cmd->argv[0], state->path_list, state);
 		
-		g_exit_status = dispatcher(cmd, state, pids, &pid_count);		
-		clean_up_all(state, 0);
+		////////
+		t_command *cmd = parse_input(input);
+		t_command *head = cmd;  // Save original command list
 
+		//the following should change to support multiple << in ONE cmd i.e: "cat << A << B ..."
+		int result;
+		result = 1;
+		while (cmd)
+		{
+			if(cmd->heredoc)
+			{
+				result = collect_and_pipe_hd(cmd, state);
+				if (result == 0) //ctr+C 
+					break;       //Ctrl+C interrupted heredoc → skip command execution
+			}
+			cmd = cmd->next;
+		}
+		// ⚠️ Prevent executing the command if heredoc was interrupted
+		if (!result)
+		{
+			clean_up_all(state, 0);
+			g_exit_status = 130;
+			continue; // back to prompt
+		}
+		////////////
+
+		state->cmd = head;
+		state->path_list = get_path_list(state);
+		state->full_path = get_full_path(head->argv[0], state->path_list, state);
+		
+		g_exit_status = dispatcher(head, state, pids, &pid_count);
+		clean_up_all(state, 0);
 	}
 	free_list(env_list);
 	rl_clear_history();
+	close(original_stdin_fd); // Close the saved FD here too
+
 	return(g_exit_status);
 }
 

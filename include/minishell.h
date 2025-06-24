@@ -23,6 +23,8 @@ typedef struct s_command {
     int append;                // 0 = >, 1 = >>
     int heredoc;               // 1 = heredoc used (<<)
     char *heredoc_delim;       // Delimiter string for heredoc
+    int here_doc_read_fd;      // default -1
+    //t_redir *redir_list;
     int has_redirection;        // 1 = true, 0 = false
     int has_pipe;              // 1 if there's a pipe after this command
     struct s_command *next;    // Next command in pipeline
@@ -42,6 +44,7 @@ typedef struct s_shell_state{
     char **path_list;
     char **mini_envp;
     t_env   *env_list;
+    int original_stdin_fd;
 } t_shell_state;
 
 typedef int(*buildin_func)(char **, t_env **, t_shell_state *);
@@ -54,10 +57,12 @@ typedef struct s_builtin{
 
 extern int  g_exit_status; //check if better: volatile sig_atomic_t g_exit_status;
 
+
 int		main(int argc, char **argv, char **envp);
 int		execute_external(t_command *cmd, char *full_path, t_shell_state *state);
 int		execute_builtin(t_command *cmd, t_shell_state *state);
 void    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count);
+void    pipe_fail();
 int		is_builtin(char *command);
 int     should_run_in_parent(char *command);
 //int		exists_in_path(char *command, t_shell_state *state);
@@ -83,6 +88,7 @@ int		already_exists(char **envp, char *input, int input_len);
 int		contains_equal_sign(char *input);
 void	free_list(t_env *list);
 void	free_array(char **path_list);
+void	print_warning(char *msg, char *insert, t_shell_state *state);
 
 //converter
 t_env   *env_list_from_envp(char **envp, t_shell_state *state, int for_envp);
@@ -95,6 +101,7 @@ void    signals_handler(void);
 void     redirect_fd(char *file, int redirection_type);
 int     redirection_type(t_command *cmd);
 void    apply_redirections(t_command *cmd);
+int    collect_and_pipe_hd(t_command *cmd, t_shell_state *state);
 
 //sort_envp
 void    find_node_by_value(char *x, t_env **currentx, t_env **prevx, t_env **head);

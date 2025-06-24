@@ -46,7 +46,7 @@ int execute_builtin(t_command *cmd, t_shell_state *state)
     {
         if (ft_strcmp(cmd->argv[0], g_builtins[i].name) == 0)
         {
-            if(cmd-> has_redirection)
+            if(cmd->has_redirection)
             {
                 //printf("entered in: cmd-> has_redirection\n"); //delete it
                 stdout = dup(STDOUT_FILENO);

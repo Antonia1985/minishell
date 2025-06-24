@@ -58,6 +58,7 @@ t_command *parse_input(const char *input) {
         cmd->append = 0;
         cmd->heredoc = 0;
         cmd->heredoc_delim = NULL;
+        cmd->here_doc_read_fd = -1;
         cmd->has_redirection = 0;
         cmd->has_pipe = 0;
         cmd->next = NULL;

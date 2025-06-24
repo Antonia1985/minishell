@@ -3,21 +3,24 @@
 
 void    my_handler(int signal)
 {
-    (void)signal;
+    (void)signal;	
+	if (g_exit_status == 130)
+		return; // do nothing — heredoc handler already handled it
     rl_replace_line("", 0); //Replaces Readline’s editing buffer (the text the user has been typing) with the given text
     rl_on_new_line();       //Internally it resets Readline’s idea of the current cursor position to the start of a line.
     write(1, "\n", 1);      //Forces Readline to redraw the prompt and the contents of its editing buffer on the current line
+	//write(1, "in my_handler orig", 18);
     rl_redisplay();
 }
 
 void    signals_handler()
 {
-    //Ctrl-\ -- SIGQUIT (“quit”) --> SIG_IGN
+    //Ctrl-\ -- SIGQUIT (“quit”) --> SIG_IGN //  Ctrl-\ tells the terminal to send SIGQUIT (“quit”).
 	struct sigaction sa1;
 	sigemptyset(&sa1.sa_mask);
 	sa1.sa_flags = 0;
 	sa1.sa_handler = SIG_IGN;
-	if(sigaction(SIGQUIT, &sa1, NULL) == -1) //  Ctrl-\ tells the terminal to send SIGQUIT (“quit”).
+	if(sigaction(SIGQUIT, &sa1, NULL) == -1) 
 	{
 		perror("sigaction");
 		exit(EXIT_FAILURE);
@@ -34,8 +37,6 @@ void    signals_handler()
         exit(EXIT_FAILURE);
     }
 }
-
-
 
 /*
 	A signal mask is simply a set of signals that are currently blocked 
