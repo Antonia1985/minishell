@@ -112,7 +112,7 @@ char    **env_list_to_envp(t_env *list, t_shell_state *state);
 void    signals_handler(void);
 
 //redirections
-int     redirect_fd(t_redir *redir, char *file, int redirection_type, t_shell_state *state);
+int    redirect_fd(int *last_input_fd, t_redir *redir, char *file, int redirection_type, t_shell_state *state);
 //int     redirection_type(t_command *cmd);
 int    apply_redirections(t_command *cmd, t_shell_state *state);
 int    collect_and_pipe_hd(char *target, t_shell_state *state);

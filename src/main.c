@@ -166,40 +166,8 @@ int main(int argc, char **argv, char **envp)
 			continue;
 		}
 		
-		////////
 		t_command *cmd = parse_input(input);
 		t_command *head = cmd;  // Save original command list
-
-		//support multiple << in ONE cmd i.e: "cat << A << B ..."		
-		
-		/*int last_fd = -1;
-		while (cmd)
-		{				
-			t_redir *redir = cmd->redir_list;
-		
-			while(redir->type == R_HEREDOC)
-			{
-				redir->read_fd = collect_and_pipe_hd(redir->target, state);
-				if (last_fd != -1) //if it's not the 1st heredod_fd
-                	close(last_fd); // close previous heredoc pipe
-            	last_fd = redir->read_fd;
-				if (last_fd == 0) //ctr+C 
-					break;       //Ctrl+C interrupted heredoc → skip command execution
-				redir = redir->next;
-			}
-			cmd->here_doc_read_fd = last_fd;
-			// ⚠️ Prevent executing the command if heredoc was interrupted
-			if (!last_fd)
-			{
-				clean_up_all(state, 0);
-				g_exit_status = 130;
-				continue; // back to prompt
-			}
-			cmd = cmd->next;
-		}
-		
-		// at this point
-		////////////*/
 
 		state->cmd = head;
 		state->path_list = get_path_list(state);

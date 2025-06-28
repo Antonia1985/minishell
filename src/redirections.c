@@ -1,7 +1,7 @@
 #include "minishell.h"
 #include "libft.h"
 
-int    redirect_fd(t_redir *redir, char *file, int redirection_type, t_shell_state *state)
+int    redirect_fd(int *last_input_fd, t_redir *redir, char *file, int redirection_type, t_shell_state *state)
 {
     int fd;
     char *exp_file = expand_line(file, state);
@@ -14,7 +14,11 @@ int    redirect_fd(t_redir *redir, char *file, int redirection_type, t_shell_sta
     redir->target = exp_file;
     
     if(redirection_type == R_INPUT)   // < 
+    {
         fd = open(exp_file, O_RDONLY);
+        *last_input_fd = fd;
+        //last_input_type = 0;
+    }
     else if(redirection_type == R_OUTPUT)
         fd = open(exp_file, O_CREAT | O_WRONLY |O_TRUNC, 0644);    // >
     else if(redirection_type == R_APPEND)
@@ -58,12 +62,13 @@ int    apply_redirections(t_command *cmd, t_shell_state *state)
 {
     t_redir *redir = cmd->redir_list;
     int last_hd_fd = -1;
+    int last_input_fd = -1;
+    //int last_input_type = -1;
+
     while(redir)
     {
-        fprintf(stderr, "redir type %d target %s\n", redir->type, redir->target);
-
         if ((redir->type == R_INPUT || redir->type == R_OUTPUT || redir->type == R_APPEND) 
-                && !redirect_fd(redir, redir->target, redir->type, state))
+                && !redirect_fd(&last_input_fd, redir, redir->target, redir->type, state))
             return (0);
         else if(redir->type == R_HEREDOC)
         {
@@ -77,13 +82,18 @@ int    apply_redirections(t_command *cmd, t_shell_state *state)
                 return(0);
             }
             cmd->here_doc_read_fd = last_hd_fd;
-            if (dup2(last_hd_fd, STDIN_FILENO) == -1)
-            {
-                perror("dup2");
-                return 0;
-            }
-        }        
+            last_input_fd = last_hd_fd;
+            //last_input_type = 3;
+        }
         redir = redir->next;
+    }
+    if (last_input_fd != -1)
+    {
+        if (dup2(last_input_fd, STDIN_FILENO) == -1)
+        {
+            perror("minishell: dup2");
+            return 0;
+        }
     }
     return(1);
 }
