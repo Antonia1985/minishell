@@ -9,7 +9,7 @@ int    redirect_fd(int *last_input_fd, t_redir *redir, char *file, int redirecti
     {
         print_warning_set_status("minishell: %s: ambiguous redirect\n",
                                 (char*[]){exp_file, NULL}, 1);
-        return (0); // point 1
+        return (0);
     }
     redir->target = exp_file;
     
@@ -20,41 +20,37 @@ int    redirect_fd(int *last_input_fd, t_redir *redir, char *file, int redirecti
         //last_input_type = 0;
     }
     else if(redirection_type == R_OUTPUT)
+    {
         fd = open(exp_file, O_CREAT | O_WRONLY |O_TRUNC, 0644);    // >
+        //*last_output_fd = fd;
+    }
     else if(redirection_type == R_APPEND)
+    {
         fd = open(exp_file, O_CREAT | O_WRONLY |O_APPEND, 0644);   // >>
+        //*last_output_fd = fd;
+    }
     else 
     {
         print_warning_set_status("minishell: internal error: unknown redirection type\n", NULL, 2); // <-this warning is not necessary, it's for my debugging, I can keep or delete it
-        return (0); // point 2
+        return (0);
     }
     if (fd < 0)
     {
         char *input_msgs[] = {exp_file, strerror(errno), NULL};
         print_warning_set_status("minishell: %s: %s\n", input_msgs, 1);       
-        return (0);  // point 3
+        return (0);
     }
-    if (redirection_type == R_INPUT)
-    {
-        if (dup2(fd, STDIN_FILENO) < 0)
-        {
-            perror("minishell: dup2");
-            close(fd);
-            //exit(1); 
-            return (0);  // point 4
-        }
-    }
-    else
+
+    if (redirection_type == R_APPEND || redirection_type == R_OUTPUT)
     {
         if (dup2(fd, STDOUT_FILENO) < 0)
         {
             perror("minishell: dup2");
             close(fd);
-            //exit(1); 
-            return (0);  // point 5
+            return (0);
         }
-    }    
-    close (fd);
+        close (fd);
+    }   
     return (1);// point 6
 }
 
@@ -63,6 +59,7 @@ int    apply_redirections(t_command *cmd, t_shell_state *state)
     t_redir *redir = cmd->redir_list;
     int last_hd_fd = -1;
     int last_input_fd = -1;
+    //int last_output_fd = -1;
     //int last_input_type = -1;
 
     while(redir)
@@ -94,6 +91,7 @@ int    apply_redirections(t_command *cmd, t_shell_state *state)
             perror("minishell: dup2");
             return 0;
         }
+        close(last_input_fd);
     }
     return(1);
 }

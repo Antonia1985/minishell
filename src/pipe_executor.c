@@ -92,8 +92,12 @@ void    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pi
                     clean_up_all(state, 0);
                     exit(127);
                 }
-                if (cmd->has_redirection && !apply_redirections(cmd, state))
+                if (cmd->has_redirection && !apply_redirections(cmd, state))  //debug << : dup2(current_pipe[1], STDOUT_FILENO); STDOUT_FILENO : 1  and pipefd[0](pipefd[1] had the heredoc lines and it's closed)
                     exit_with_status(g_exit_status, state);
+                //new add
+                if (cmd->heredoc && prev_pipe[0] != STDIN_FILENO && prev_pipe[0] != -1)
+                    close(prev_pipe[0]);
+                //
                 char *path = get_full_path(cmd->argv[0], state->path_list, state);
                 if (!path)
                 {
