@@ -16,18 +16,32 @@
 #include <asm-generic/signal-defs.h>
 #include <fcntl.h>
 
+typedef enum e_redir_type {
+    R_INPUT,
+    R_OUTPUT,
+    R_APPEND,
+    R_HEREDOC
+}   t_redir_type;
+
+typedef struct s_redir {
+    t_redir_type type;
+    char *target;     // filename or heredoc limiter
+    int read_fd;      // only used for heredocs
+    struct s_redir *next;
+}   t_redir;
+
 typedef struct s_command {
-    char **argv;               // Arguments array (execve-compatible)
-    char *infile;              // File name for input redirection ('<')
-    char *outfile;             // File name for output redirection ('>' or '>>')
-    int append;                // 0 = >, 1 = >>
-    int heredoc;               // 1 = heredoc used (<<)
-    char *heredoc_delim;       // Delimiter string for heredoc
-    int here_doc_read_fd;      // default -1
-    //t_redir *redir_list;
-    int has_redirection;        // 1 = true, 0 = false
-    int has_pipe;              // 1 if there's a pipe after this command
-    struct s_command *next;    // Next command in pipeline
+    char **argv;             // Arguments array (execve-compatible)
+    //char *infile;          // File name for input redirection ('<')
+    //char *outfile;         // File name for output redirection ('>' or '>>')
+    //int append;            // 0 = >, 1 = >>
+    int heredoc;             // 1 = heredoc used (<<)
+    //char *heredoc_delim;   // Delimiter string for heredoc
+    int here_doc_read_fd;    // default -1
+    int has_redirection;     // 1 = true, 0 = false
+    t_redir *redir_list;
+    int has_pipe;             // 1 if there's a pipe after this command
+    struct s_command *next;   // Next command in pipeline
 } t_command;
 
 
@@ -45,6 +59,7 @@ typedef struct s_shell_state{
     char **mini_envp;
     t_env   *env_list;
     int original_stdin_fd;
+    int full_path_error;
 } t_shell_state;
 
 typedef int(*buildin_func)(char **, t_env **, t_shell_state *);
@@ -77,8 +92,7 @@ int		ft_pwd(char **cmd_argv, t_env **env_list, t_shell_state *state);
 int		ft_env(char **cmd_argv, t_env **env_list, t_shell_state *state);
 int		ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state);
 int		ft_unset(char **cmd_argv, t_env **env_list, t_shell_state *state);
-//char	*get_env_value(char **envp, char *key_equal, t_shell_state *state);
-char    *get_env_list_value(t_env *env_list, char *key);
+
 
 // shared_fun
 void	clean_up_all(t_shell_state *state, int free_env);
@@ -88,7 +102,7 @@ int		already_exists(char **envp, char *input, int input_len);
 int		contains_equal_sign(char *input);
 void	free_list(t_env *list);
 void	free_array(char **path_list);
-void	print_warning(char *msg, char *insert, t_shell_state *state);
+void	print_warning_set_status(char *msg, char *insert[], int status);
 
 //converter
 t_env   *env_list_from_envp(char **envp, t_shell_state *state, int for_envp);
@@ -98,10 +112,10 @@ char    **env_list_to_envp(t_env *list, t_shell_state *state);
 void    signals_handler(void);
 
 //redirections
-void     redirect_fd(char *file, int redirection_type);
-int     redirection_type(t_command *cmd);
-void    apply_redirections(t_command *cmd);
-int    collect_and_pipe_hd(t_command *cmd, t_shell_state *state);
+int     redirect_fd(t_redir *redir, char *file, int redirection_type, t_shell_state *state);
+//int     redirection_type(t_command *cmd);
+int    apply_redirections(t_command *cmd, t_shell_state *state);
+int    collect_and_pipe_hd(char *target, t_shell_state *state);
 
 //sort_envp
 void    find_node_by_value(char *x, t_env **currentx, t_env **prevx, t_env **head);
@@ -112,7 +126,7 @@ void    sort_list(t_env **env_head);
 
 //linked_lists_handler
 char    *get_env_list_value(t_env *env_list, char *key);
-char	*expand_line(char *line, t_env *env_list, t_shell_state *state);
+char	*expand_line(char *line, t_shell_state *state);
 
 
 // ------parser to be change-----

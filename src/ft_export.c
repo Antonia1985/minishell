@@ -204,9 +204,11 @@ int    ft_export(char **cmd_argv, t_env **env_list, t_shell_state *state)
             else
             {
                 if (variables->value)
-                    printf("bash: export: `%s%s': not a valid identifier\n", variables->key,variables->value);
+                    print_warning_set_status("bash: export: `%s%s': not a valid identifier\n",
+                                            (char*[]){variables->key,variables->value, NULL}, 1);
                 else
-                    printf("bash: export: `%s': not a valid identifier\n", variables->key);            
+                    print_warning_set_status("bash: export: `%s': not a valid identifier\n",
+                                            (char*[]){variables->key, NULL}, 1);
                 g_exit_status = 1;                
             }                  
             variables = variables->next;

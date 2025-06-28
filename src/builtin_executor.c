@@ -41,7 +41,7 @@ int execute_builtin(t_command *cmd, t_shell_state *state)
     //int status;
     int i = 0;
     int stdout = -1;
-
+    int stdin = -1;
     while (g_builtins[i].name != NULL)
     {
         if (ft_strcmp(cmd->argv[0], g_builtins[i].name) == 0)
@@ -49,19 +49,54 @@ int execute_builtin(t_command *cmd, t_shell_state *state)
             if(cmd->has_redirection)
             {
                 //printf("entered in: cmd-> has_redirection\n"); //delete it
-                stdout = dup(STDOUT_FILENO);
-                apply_redirections(cmd);
+                if(!cmd->has_pipe)
+                {
+                    stdout = dup(STDOUT_FILENO);
+                    stdin = dup(STDIN_FILENO);
+                    if (stdout == -1 || stdin == -1)
+                    {
+                        perror("minishell: dup");
+                        g_exit_status = 1;
+                        return g_exit_status;
+                    }
+                }                
+                if (!apply_redirections(cmd, state))
+                {
+                    if (!cmd->has_pipe)
+                    {
+                        if (stdout != -1)
+                            close(stdout);
+                        if (stdin != -1)
+                            close(stdin);
+                    }
+                    g_exit_status = 1;
+                    return (g_exit_status); // Redirection failed; abort builtin
+                }
             }
             //printf("entered in: executing the builtin\n"); //delete it
             g_exit_status = g_builtins[i].func(cmd->argv, &state->env_list, state);
 
-            dup2(stdout, STDOUT_FILENO);
-            close (stdout);
+            if(!cmd->has_pipe)
+            {
+                if (stdout != -1)
+                {
+                    dup2(stdout, STDOUT_FILENO);
+                    close (stdout);
+                }
+                if (stdin != -1)
+                {
+                    dup2(stdin, STDIN_FILENO);
+                    close (stdin);
+                }
+            }
             return g_exit_status;
         }
         i++;
-    }   
-    return(0);
+    }
+    print_warning_set_status("minishell: internal error: unknown builtin: %s\n", 
+                            (char *[]){cmd->argv[0], NULL}, 1);
+    g_exit_status = 1;
+    return g_exit_status;
 }
 
 

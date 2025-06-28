@@ -34,15 +34,28 @@ char	*get_full_path(char *command, char **path_list, t_shell_state *state)
 		free(temp);
 		if (!command_full_path)	
 			malloc_failure(state);
-		if (access(command_full_path, X_OK) == 0)
+		if (access(command_full_path, F_OK) == 0)
 		{
-			state->full_path = command_full_path;
-			return (command_full_path);
+			if (access(command_full_path, X_OK) == 0)
+			{
+				state->full_path = command_full_path;
+				return (command_full_path);
+			}
+			else 
+			{
+				char *input_msgs[] = {command_full_path, NULL};
+				print_warning_set_status("minishell: %s: Permission denied\n", input_msgs, 126);
+				free(command_full_path);
+				state->full_path_error = 126;
+				return (NULL);
+			}
 		}
 		free(command_full_path);
 		i++;
-	}	
+	}
+	state->full_path_error = 127;
 	return (NULL);
+	
 }
 
 int execute_external(t_command *cmd, char *full_path, t_shell_state *state)
@@ -56,11 +69,9 @@ int execute_external(t_command *cmd, char *full_path, t_shell_state *state)
 		//printf("entered in: execute_fork of fork_executor\n"); //delete it
 		envp = env_list_to_envp(state->env_list, state);		
 		
-		if(cmd->has_redirection)
-		{
-			//printf("entered in: cmd-> has_redirection \n"); //delete it				
-			apply_redirections(cmd);
-		}
+		if(cmd->has_redirection && !apply_redirections(cmd, state))
+        	exit_with_status(g_exit_status, state);
+		
 		execve(full_path, cmd->argv, envp);
 		free_array(envp);
 		perror("minishell: execve");

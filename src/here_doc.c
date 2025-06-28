@@ -10,7 +10,7 @@ void heredoc_sigint_handler(int sig)
     close(STDIN_FILENO); // special code for heredoc interrupted
 }
 
-int     collect_and_pipe_hd(t_command *cmd, t_shell_state *state)
+int     collect_and_pipe_hd(char *target, t_shell_state *state)
 {
     char   *line;
     char   *expanded_line;
@@ -36,7 +36,7 @@ int     collect_and_pipe_hd(t_command *cmd, t_shell_state *state)
     input[i] = NULL;
     ft_bzero(input, capacity * sizeof *input);
     expansions = 1;
-    if (ft_strchr(cmd->heredoc_delim, '\'') || ft_strchr(cmd->heredoc_delim, '\"'))
+    if (ft_strchr(target, '\'') || ft_strchr(target, '\"'))
         expansions = 0;
 
     while(1)
@@ -46,13 +46,14 @@ int     collect_and_pipe_hd(t_command *cmd, t_shell_state *state)
         {
             if(g_exit_status != 130)// If g_exit_status is NOT 130, it means it was Ctrl+D (EOF)
             //Ctrl+D (EOF) is a valid, non-fatal case, heredoc input ends early, but you still want to send the collected lines to the command
-            {            
-                print_warning("warning: here-document at line 1 delimited by end-of-file (wanted `%s')\n", 
-                        cmd->heredoc_delim, state);                
+            {        
+                char *input_msgs[] = {target, NULL};  
+                print_warning_set_status("warning: here-document at line 1 delimited by end-of-file (wanted `%s')\n", 
+                        input_msgs, -1);
             }
             break;// Exit loop whether it's Ctrl+D or Ctrl+C
         }//else if there is >some_input in the line,and I ctr+D nothing happens..
-        if(ft_strcmp(line, cmd->heredoc_delim) == 0)        
+        if(ft_strcmp(line, target) == 0)
         {
             //Stop collecting input        
             free(line);// Free the delimiter line
@@ -70,9 +71,8 @@ int     collect_and_pipe_hd(t_command *cmd, t_shell_state *state)
         }       
         if(expansions)
         {            
-            expanded_line = expand_line(line, state->env_list, state);
+            expanded_line = expand_line(line, state);            
             input[i] = ft_strdup(expanded_line);
-            //free(expanded_line);
             line = expanded_line;
             if(!input[i])
                 malloc_failure(state);
@@ -86,14 +86,12 @@ int     collect_and_pipe_hd(t_command *cmd, t_shell_state *state)
         free(line);
         i++;
     }
-    //free(line);
     if(input)
         input[i] = NULL;
-
+        
     int pipefd[2];
     if(pipe(pipefd) == -1)
         pipe_fail();
-
     i = 0;
     while(input[i])
     {
@@ -104,15 +102,24 @@ int     collect_and_pipe_hd(t_command *cmd, t_shell_state *state)
     free_array(input);
     close(pipefd[1]);
     sigaction(SIGINT, &old_sa, NULL);
-    cmd->here_doc_read_fd = pipefd[0];
-    if (g_exit_status == 130)// ctr+C :  when Ctrl+C is pressed at any point during a line input:
-                                    //readline() will: Cancel the current input & Return NULL, that's why: if(!line)
+   // pipefd[0]; 
+
+    if (g_exit_status == 130)// ctr+C 
     {
         close(pipefd[0]); // Close the read end too, as the command won't read from it now
         return (0); // Indicate that the heredoc collection was cancelled
     }
-    return(1);
+    return(pipefd[0]); //usually a number > 2, that mimics the STDIN_FILENO : 0
 }
+
+
+/*
+STDIN_FILENO is 0, read
+STDOUT_FILENO is 1, write
+STDERR_FILENO is 2, write
+*/
+
+// ctr+C :  when Ctrl+C is pressed at any point during a line input: readline() will: Cancel the current input & Return NULL
 
 /*
 4. << DELIM (Here-Document)

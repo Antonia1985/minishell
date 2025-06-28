@@ -90,38 +90,25 @@ void	free_array(char **array)
 	free(array);
 }
 
-void	print_warning(char *msg, char *insert, t_shell_state *state)
+void	print_warning_set_status(char *msg, char *insert[], int status)
 {
-	int i = 0;
-	char *first_part = NULL;
-	char *second_part = NULL;
-
-	while (msg[i] && msg[i] != '%' )
-		i++;
-	first_part = ft_substr(msg, 0, i);
-	if(!first_part)
-		malloc_failure(state);
-
-	if (msg[i+1] && msg[i+1] == 's')
-	{
-		i= i+2;
-		second_part = ft_substr(msg, i, ft_strlen(msg));
-		if(!second_part)
+	int	i = 0;
+	int j = 0;
+   
+	while(msg[i])
+	{		
+		if (msg[i] == '%' && msg[i + 1] == 's')
 		{
-			free(first_part);
-			malloc_failure(state);
+			write(2, insert[j], ft_strlen(insert[j]));
+			j++;
+			i += 2;
 		}
-	}		
-	else 
-		i--;
-	
-	write(2, first_part, ft_strlen(first_part));	
-	free(first_part);
-
-	if(second_part)
-	{
-		write(2, insert, ft_strlen(insert));
-		write(2, second_part, ft_strlen(second_part));
-		free(second_part);
+		else
+		{
+			write(2, &msg[i], 1);
+				i++;
+		}
 	}
+	if (status != -1)
+		g_exit_status = status;
 }

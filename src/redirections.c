@@ -1,67 +1,110 @@
 #include "minishell.h"
 #include "libft.h"
 
-int redirection_type(t_command *cmd)
-{
-	if (cmd->infile) // <
-		return(1);
-	if (cmd->outfile && !cmd->append) // >
-		return (2);
-	if(cmd->outfile && cmd->append) // >>
-		return (3);
-	
-	return (0);
-}
-
-void    redirect_fd(char *file, int redirection_type)
+int    redirect_fd(t_redir *redir, char *file, int redirection_type, t_shell_state *state)
 {
     int fd;
-
-    if(redirection_type == 1)   // < 
-        fd = open(file, O_RDONLY);
-    if(redirection_type == 2)
-        fd = open(file, O_CREAT | O_WRONLY |O_TRUNC, 0644);    // >
-    if(redirection_type == 3)
-        fd = open(file, O_CREAT | O_WRONLY |O_APPEND, 0644);   // >>
-    if(fd < 0)
+    char *exp_file = expand_line(file, state);
+    if (!exp_file || exp_file[0] == '\0' || ft_strchr(exp_file, ' ') != NULL)
     {
-        perror("open");
-        exit(1);
+        print_warning_set_status("minishell: %s: ambiguous redirect\n",
+                                (char*[]){exp_file, NULL}, 1);
+        return (0); // point 1
     }
-    if(redirection_type == 1)   // < 
+    redir->target = exp_file;
+    
+    if(redirection_type == R_INPUT)   // < 
+        fd = open(exp_file, O_RDONLY);
+    else if(redirection_type == R_OUTPUT)
+        fd = open(exp_file, O_CREAT | O_WRONLY |O_TRUNC, 0644);    // >
+    else if(redirection_type == R_APPEND)
+        fd = open(exp_file, O_CREAT | O_WRONLY |O_APPEND, 0644);   // >>
+    else 
+    {
+        print_warning_set_status("minishell: internal error: unknown redirection type\n", NULL, 2); // <-this warning is not necessary, it's for my debugging, I can keep or delete it
+        return (0); // point 2
+    }
+    if (fd < 0)
+    {
+        char *input_msgs[] = {exp_file, strerror(errno), NULL};
+        print_warning_set_status("minishell: %s: %s\n", input_msgs, 1);       
+        return (0);  // point 3
+    }
+    if (redirection_type == R_INPUT)
     {
         if (dup2(fd, STDIN_FILENO) < 0)
         {
-            perror("dup2");
-            exit(1);
+            perror("minishell: dup2");
+            close(fd);
+            //exit(1); 
+            return (0);  // point 4
         }
     }
-    else if(redirection_type == 2 || redirection_type == 3)
+    else
     {
         if (dup2(fd, STDOUT_FILENO) < 0)
         {
-            perror("dup2");
-            exit(1);
+            perror("minishell: dup2");
+            close(fd);
+            //exit(1); 
+            return (0);  // point 5
         }
     }    
     close (fd);
+    return (1);// point 6
 }
 
-void    apply_redirections(t_command *cmd)
+int    apply_redirections(t_command *cmd, t_shell_state *state)
 {
-    int redir_type;
+    t_redir *redir = cmd->redir_list;
+    int last_hd_fd = -1;
+    while(redir)
+    {
+        fprintf(stderr, "redir type %d target %s\n", redir->type, redir->target);
 
-    redir_type = redirection_type(cmd);
-    if(redir_type == 1)
-        redirect_fd(cmd->infile, 1);
-    if(redir_type == 2)
-        redirect_fd(cmd->outfile, 2);
-    if(redir_type == 3)
-        redirect_fd(cmd->outfile, 3);
-    
+        if ((redir->type == R_INPUT || redir->type == R_OUTPUT || redir->type == R_APPEND) 
+                && !redirect_fd(redir, redir->target, redir->type, state))
+            return (0);
+        else if(redir->type == R_HEREDOC)
+        {
+            redir->read_fd = collect_and_pipe_hd(redir->target, state);
+            if (last_hd_fd != -1) //if it's not the 1st heredod_fd
+                close(last_hd_fd); // close previous heredoc pipe
+            last_hd_fd = redir->read_fd;
+            if (last_hd_fd == 0) //ctr+C 
+            {
+                g_exit_status = 130; //Ctrl+C interrupted heredoc → skip command execution
+                return(0);
+            }
+            cmd->here_doc_read_fd = last_hd_fd;
+            if (dup2(last_hd_fd, STDIN_FILENO) == -1)
+            {
+                perror("dup2");
+                return 0;
+            }
+        }        
+        redir = redir->next;
+    }
+    return(1);
 }
 
+// ihave to check and modify what happens in apply_redirections() when it's called and returns 0;
 
+/*
+✅ What your Minishell should do:
+Print a warning:
+"minishell: one two: ambiguous redirect"
+Set g_exit_status = 1 (or 2 — Bash uses 1)
+Do not fork or run the command
+Return cleanly to the prompt
+
+✅ Where to return early from
+In:
+dispatcher() (for single commands)
+Or pipe_executor() (skip the process if redirection failed)
+Make sure if redirection fails, you don’t call execve() or builtin, 
+and you don’t exit() unless you're in a forked child.
+*/
 
 /*
 Next Steps
@@ -71,11 +114,9 @@ Next Steps
 
 >> (output append): use open(..., O_CREAT|O_WRONLY|O_APPEND, mode) then dup2.
 
-<< delim (here-doc): you can read lines in a loop from STDIN_FILENO 
+<< delim (here-doc): you can read lines in a loop from STDIN_FILENO
     until you see your delimiter.
-    
 _______________________________________________________________________________________
-
 
 1)  open() gives you a new FD (say, 3).
 
@@ -113,9 +154,9 @@ Group can read only
 Others can read only
 ______________________________________________________________________________________
 
-STDIN_FILENO is 0,
-STDOUT_FILENO is 1,
-STDERR_FILENO is 2,
+STDIN_FILENO is 0, read
+STDOUT_FILENO is 1, write
+STDERR_FILENO is 2, write
 ______________________________________________________________________________________
 
 < (Input Redirection)   

@@ -25,7 +25,7 @@ char *get_current_directory()
 	return (prompt);
 }
 
-int	get_input(char **input, t_env *env_list, t_shell_state *state)
+int	get_input(char **input, t_shell_state *state)
 {
 	char *prompt = get_current_directory();
 	
@@ -44,17 +44,15 @@ int	get_input(char **input, t_env *env_list, t_shell_state *state)
 		return(1);
 	}
 
-	*input = expand_line(*input, env_list, state);
+	*input = expand_line(*input, state);
 	if(!*input)
-		malloc_failure(state);
+	{
+		//malloc_failure(state); //this looks wrong
+		return (1);
+	}	
 
 	state->input = *input;
 	return(2);
-}
-
-int needs_fork(t_command *cmd) 
-{
-   return (cmd->has_pipe || cmd->heredoc);
 }
 
 int dispatcher(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count)
@@ -88,10 +86,10 @@ int dispatcher(t_command *cmd, t_shell_state *state, pid_t *pids, int *pid_count
 			//printf("entered in: !cmd->has_pipe + state->full_path \n"); //delete it
 			g_exit_status = execute_external(cmd, state->full_path, state); //for here			
 		}
-		else
+		else if (state->full_path_error == 127)
 		{
-			printf("minishell: command not found: %s\n",cmd->argv[0]); //"minishell: %s: command not found\n"
-			g_exit_status = 127;
+			char *input_msgs[] = {cmd->argv[0], NULL};
+			print_warning_set_status("minishell: command not found: %s\n", input_msgs, 127); //"minishell: %s: command not found\n"
 		}
 	}
 	else
@@ -153,7 +151,7 @@ int main(int argc, char **argv, char **envp)
 		{
 			dup2(state->original_stdin_fd, STDIN_FILENO);			
 		}
-		int input_res = get_input(&input, env_list, state);
+		int input_res = get_input(&input, state);
 
 		if(input_res == 0 && g_exit_status != 130) //readline() returned NULL on EOF (Ctrl+D)
 		{
@@ -172,32 +170,41 @@ int main(int argc, char **argv, char **envp)
 		t_command *cmd = parse_input(input);
 		t_command *head = cmd;  // Save original command list
 
-		//the following should change to support multiple << in ONE cmd i.e: "cat << A << B ..."
-		int result;
-		result = 1;
+		//support multiple << in ONE cmd i.e: "cat << A << B ..."		
+		
+		/*int last_fd = -1;
 		while (cmd)
-		{
-			if(cmd->heredoc)
+		{				
+			t_redir *redir = cmd->redir_list;
+		
+			while(redir->type == R_HEREDOC)
 			{
-				result = collect_and_pipe_hd(cmd, state);
-				if (result == 0) //ctr+C 
+				redir->read_fd = collect_and_pipe_hd(redir->target, state);
+				if (last_fd != -1) //if it's not the 1st heredod_fd
+                	close(last_fd); // close previous heredoc pipe
+            	last_fd = redir->read_fd;
+				if (last_fd == 0) //ctr+C 
 					break;       //Ctrl+C interrupted heredoc → skip command execution
+				redir = redir->next;
+			}
+			cmd->here_doc_read_fd = last_fd;
+			// ⚠️ Prevent executing the command if heredoc was interrupted
+			if (!last_fd)
+			{
+				clean_up_all(state, 0);
+				g_exit_status = 130;
+				continue; // back to prompt
 			}
 			cmd = cmd->next;
 		}
-		// ⚠️ Prevent executing the command if heredoc was interrupted
-		if (!result)
-		{
-			clean_up_all(state, 0);
-			g_exit_status = 130;
-			continue; // back to prompt
-		}
-		////////////
+		
+		// at this point
+		////////////*/
 
 		state->cmd = head;
 		state->path_list = get_path_list(state);
 		state->full_path = get_full_path(head->argv[0], state->path_list, state);
-		
+	
 		g_exit_status = dispatcher(head, state, pids, &pid_count);
 		clean_up_all(state, 0);
 	}

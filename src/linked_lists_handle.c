@@ -9,8 +9,8 @@ char    *get_env_list_value(t_env *env_list, char *key)
         {
             return(env_list->value);
         }
-        env_list = env_list->next;            
-    }
+        env_list = env_list->next;
+    }	
     return (NULL);
 }
 
@@ -33,7 +33,7 @@ static void	expand_exit_status(char **key, char **value, char *new_line, t_shell
 	}
 }
 
-char	*expand_line(char *line, t_env *env_list, t_shell_state *state)
+char	*expand_line(char *line, t_shell_state *state)
 {
 	char	*key;
 	char	*value;
@@ -74,9 +74,9 @@ char	*expand_line(char *line, t_env *env_list, t_shell_state *state)
 					free (new_line);
 					malloc_failure(state);
 				}
-				value_temp = get_env_list_value(env_list, key);
-				if(!value_temp)
-					value = ft_strdup("");
+				value_temp = get_env_list_value(state->env_list, key);
+				if(!value_temp)			
+					value = ft_strdup("");					
 				else
 					value = ft_strdup(value_temp);
 				if(!value)

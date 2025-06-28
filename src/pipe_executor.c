@@ -92,8 +92,8 @@ void    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pi
                     clean_up_all(state, 0);
                     exit(127);
                 }
-                if(cmd->has_redirection)
-                    apply_redirections(cmd); 
+                if (cmd->has_redirection && !apply_redirections(cmd, state))
+                    exit_with_status(g_exit_status, state);
                 char *path = get_full_path(cmd->argv[0], state->path_list, state);
                 if (!path)
                 {
