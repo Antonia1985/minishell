@@ -37,9 +37,8 @@ void    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pi
 
     prev_pipe[0]= STDIN_FILENO;
     prev_pipe[1]=-1;
-      
     while(cmd)
-    {
+    {        
         if(cmd->has_pipe && cmd->next)// if pipe follows create a pipe
         {
             if(pipe(current_pipe) == -1)
@@ -55,12 +54,16 @@ void    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pi
         fork_fail(pids[*pid_count]);
         if(pids[*pid_count] == 0)
         {
+            if (cmd->has_redirection && !apply_redirections(cmd, state))  //debug << : dup2(current_pipe[1], STDOUT_FILENO); STDOUT_FILENO : 1  and pipefd[0](pipefd[1] had the heredoc lines and it's closed)
+                    exit_with_status(g_exit_status, state);
+                    
             envp = env_list_to_envp(state->env_list, state);
+
             if(prev_pipe[1] != -1) //if this is not the 1st cmd1 |
             {
                 close(prev_pipe[1]);                
             }
-            if(prev_pipe[0] != STDIN_FILENO)//if this is not the 1st cmd1 |
+            if(prev_pipe[0] != STDIN_FILENO && cmd->here_doc_read_fd == -1) //if not the 1st dmd and not here-doc inside
             {
                 dup2(prev_pipe[0], STDIN_FILENO);
                 close(prev_pipe[0]);
@@ -76,6 +79,11 @@ void    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pi
                 close(current_pipe[1]);
             }
 
+////////////////////
+            //if (cmd->has_redirection && !apply_redirections(cmd, state))  //debug << : dup2(current_pipe[1], STDOUT_FILENO); STDOUT_FILENO : 1  and pipefd[0](pipefd[1] had the heredoc lines and it's closed)
+            //        exit_with_status(g_exit_status, state);
+///////////////////
+
             if(is_builtin(cmd->argv[0]))
             {
                 int status = execute_builtin(cmd, state);
@@ -83,7 +91,7 @@ void    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pi
                 free_array(envp);
                 exit(status);
             }	
-            else 
+            else // external
             {
                 if (!cmd->argv || !cmd->argv[0])
                 {
@@ -92,8 +100,8 @@ void    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pi
                     clean_up_all(state, 0);
                     exit(127);
                 }
-                if (cmd->has_redirection && !apply_redirections(cmd, state))  //debug << : dup2(current_pipe[1], STDOUT_FILENO); STDOUT_FILENO : 1  and pipefd[0](pipefd[1] had the heredoc lines and it's closed)
-                    exit_with_status(g_exit_status, state);
+                //if (cmd->has_redirection && !apply_redirections(cmd, state))  //debug << : dup2(current_pipe[1], STDOUT_FILENO); STDOUT_FILENO : 1  and pipefd[0](pipefd[1] had the heredoc lines and it's closed)
+                //    exit_with_status(g_exit_status, state);
                 //new add
                 if (cmd->heredoc && prev_pipe[0] != STDIN_FILENO && prev_pipe[0] != -1)
                     close(prev_pipe[0]);
@@ -113,9 +121,10 @@ void    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pi
         }
         //parent 
         (*pid_count)++;      
+        
         //close what you have to close
-        if(prev_pipe[0] != STDIN_FILENO) // if it's not the 1st
-            close(prev_pipe[0]);
+        //if(prev_pipe[0] != STDIN_FILENO) // if it's not the 1st
+        //    close(prev_pipe[0]);
         if(current_pipe[1] != STDOUT_FILENO) //if it'not the last cmd
             close(current_pipe[1]);
         if (!cmd->next && current_pipe[0] != -1) // Check if it's the last command and current_pipe[0] is a real FD
@@ -134,4 +143,69 @@ void    pipe_executor(t_command *cmd, t_shell_state *state, pid_t *pids, int *pi
         close(prev_pipe[0]);
 
 }
+
+/*
+
+echo alpha > a.txt
+cat < a.txt | grep a | wc -l > count.txt
+
+-expected output:
+count.txt: 1
+
+PASS
+
+--------------------------------------------------------
+cat << EOF | grep bar
+foo
+bar
+baz
+EOF
+
+-ecpected output:
+bar
+
+PASS
+
+--------------------------------------------------------
+cat << STOP | grep foo | wc -l
+foo
+bar
+foo
+baz
+STOP
+-excpected output:
+2
+PASS
+
+--------------------------------------------------------
+echo one two | cat << END
+one
+two
+END
+
+-excpected output:
+one two
+one
+two
+
+-FAIL:
+one two
+
+--------------------------------------------------------
+echo foo | cat << LIMIT
+foo
+bar
+LIMIT
+
+-excpected output:
+foo
+foo
+bar
+
+-FAIL:last_input_fd
+foo
+
+
+*/
+
 

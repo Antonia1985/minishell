@@ -17,17 +17,14 @@ int    redirect_fd(int *last_input_fd, t_redir *redir, char *file, int redirecti
     {
         fd = open(exp_file, O_RDONLY);
         *last_input_fd = fd;
-        //last_input_type = 0;
     }
     else if(redirection_type == R_OUTPUT)
     {
         fd = open(exp_file, O_CREAT | O_WRONLY |O_TRUNC, 0644);    // >
-        //*last_output_fd = fd;
     }
     else if(redirection_type == R_APPEND)
     {
         fd = open(exp_file, O_CREAT | O_WRONLY |O_APPEND, 0644);   // >>
-        //*last_output_fd = fd;
     }
     else 
     {
@@ -59,17 +56,16 @@ int    apply_redirections(t_command *cmd, t_shell_state *state)
     t_redir *redir = cmd->redir_list;
     int last_hd_fd = -1;
     int last_input_fd = -1;
-    //int last_output_fd = -1;
-    //int last_input_type = -1;
 
-    while(redir)
+    while(redir)  //cat << EOF | grep foo
+
     {
         if ((redir->type == R_INPUT || redir->type == R_OUTPUT || redir->type == R_APPEND) 
                 && !redirect_fd(&last_input_fd, redir, redir->target, redir->type, state))
             return (0);
         else if(redir->type == R_HEREDOC)
         {
-            redir->read_fd = collect_and_pipe_hd(redir->target, state);
+            redir->read_fd = collect_and_pipe_hd(redir->target, state); //returns a pipefd[0] read - already has write(pipefd[1])
             if (last_hd_fd != -1) //if it's not the 1st heredod_fd
                 close(last_hd_fd); // close previous heredoc pipe
             last_hd_fd = redir->read_fd;
@@ -80,13 +76,12 @@ int    apply_redirections(t_command *cmd, t_shell_state *state)
             }
             cmd->here_doc_read_fd = last_hd_fd;
             last_input_fd = last_hd_fd;
-            //last_input_type = 3;
         }
         redir = redir->next;
     }
     if (last_input_fd != -1)
     {
-        if (dup2(last_input_fd, STDIN_FILENO) == -1)
+        if (dup2(last_input_fd, STDIN_FILENO) == -1) //STDIN_FILENO is 0, read  (for here-doc: pipefd[0])
         {
             perror("minishell: dup2");
             return 0;
@@ -96,9 +91,15 @@ int    apply_redirections(t_command *cmd, t_shell_state *state)
     return(1);
 }
 
-// ihave to check and modify what happens in apply_redirections() when it's called and returns 0;
-
 /*
+______________________________________________________________________________________
+
+STDIN_FILENO is 0, read
+STDOUT_FILENO is 1, write
+STDERR_FILENO is 2, write
+
+--------------------------------------------------------------------------
+
 ✅ What your Minishell should do:
 Print a warning:
 "minishell: one two: ambiguous redirect"
@@ -114,17 +115,7 @@ Make sure if redirection fails, you don’t call execve() or builtin,
 and you don’t exit() unless you're in a forked child.
 */
 
-/*
-Next Steps
-< (input redirection): use open(..., O_RDONLY) then dup2(fd, STDIN_FILENO).
-
-> (output truncate): use open(..., O_CREAT|O_WRONLY|O_TRUNC, mode) then dup2.
-
->> (output append): use open(..., O_CREAT|O_WRONLY|O_APPEND, mode) then dup2.
-
-<< delim (here-doc): you can read lines in a loop from STDIN_FILENO
-    until you see your delimiter.
-_______________________________________________________________________________________
+/*_______________________________________________________________________________________
 
 1)  open() gives you a new FD (say, 3).
 
@@ -160,11 +151,7 @@ ________________________________________________________________________________
 Owner can read and write
 Group can read only
 Others can read only
-______________________________________________________________________________________
 
-STDIN_FILENO is 0, read
-STDOUT_FILENO is 1, write
-STDERR_FILENO is 2, write
 ______________________________________________________________________________________
 
 < (Input Redirection)   

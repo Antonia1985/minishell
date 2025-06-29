@@ -9,6 +9,10 @@ void    search_for_key_and_remove(char *key, t_env **env_list)
     if(current && ft_strcmp(key, current->key) == 0)
     {
         *env_list = current->next;
+        if (current->key)
+            free(current->key);
+        if (current->value)
+            free(current->value);
         free(current);
         return;            
     }
@@ -20,6 +24,10 @@ void    search_for_key_and_remove(char *key, t_env **env_list)
     if(current && ft_strcmp(key, current->key) == 0)
     {
         prev->next = current->next;
+        if (current->key)
+            free(current->key);
+        if (current->value)
+            free(current->value);
         free(current);
     }
 }

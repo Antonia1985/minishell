@@ -46,29 +46,23 @@ int execute_builtin(t_command *cmd, t_shell_state *state)
     {
         if (ft_strcmp(cmd->argv[0], g_builtins[i].name) == 0)
         {
-            if(cmd->has_redirection)
+            if(cmd->has_redirection && !cmd->has_pipe)
             {
-                //printf("entered in: cmd-> has_redirection\n"); //delete it
-                if(!cmd->has_pipe)
+                stdout = dup(STDOUT_FILENO);
+                stdin = dup(STDIN_FILENO);
+                if (stdout == -1 || stdin == -1)
                 {
-                    stdout = dup(STDOUT_FILENO);
-                    stdin = dup(STDIN_FILENO);
-                    if (stdout == -1 || stdin == -1)
-                    {
-                        perror("minishell: dup");
-                        g_exit_status = 1;
-                        return g_exit_status;
-                    }
-                }                
+                    perror("minishell: dup");
+                    g_exit_status = 1;
+                    return g_exit_status;
+                }           
                 if (!apply_redirections(cmd, state))
                 {
-                    if (!cmd->has_pipe)
-                    {
-                        if (stdout != -1)
-                            close(stdout);
-                        if (stdin != -1)
-                            close(stdin);
-                    }
+                    if (stdout != -1)
+                        close(stdout);
+                    if (stdin != -1)
+                        close(stdin);
+                    
                     g_exit_status = 1;
                     return (g_exit_status); // Redirection failed; abort builtin
                 }

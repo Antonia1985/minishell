@@ -22,7 +22,6 @@ int     collect_and_pipe_hd(char *target, t_shell_state *state)
     struct sigaction old_sa;
 
     sigaction(SIGINT, NULL, &old_sa); // Save current handler
-
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sa.sa_handler = heredoc_sigint_handler;
@@ -45,7 +44,6 @@ int     collect_and_pipe_hd(char *target, t_shell_state *state)
         if(!line)
         {
             if(g_exit_status != 130)// If g_exit_status is NOT 130, it means it was Ctrl+D (EOF)
-            //Ctrl+D (EOF) is a valid, non-fatal case, heredoc input ends early, but you still want to send the collected lines to the command
             {        
                 char *input_msgs[] = {target, NULL};  
                 print_warning_set_status("warning: here-document at line 1 delimited by end-of-file (wanted `%s')\n", 
@@ -102,7 +100,6 @@ int     collect_and_pipe_hd(char *target, t_shell_state *state)
     free_array(input);
     close(pipefd[1]);
     sigaction(SIGINT, &old_sa, NULL);
-   // pipefd[0]; 
 
     if (g_exit_status == 130)// ctr+C 
     {
@@ -111,8 +108,6 @@ int     collect_and_pipe_hd(char *target, t_shell_state *state)
     }
     return(pipefd[0]); //usually a number > 2, that mimics the STDIN_FILENO : 0
 }
-
-
 /*
 STDIN_FILENO is 0, read
 STDOUT_FILENO is 1, write
